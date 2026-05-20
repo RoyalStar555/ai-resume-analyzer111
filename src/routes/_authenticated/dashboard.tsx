@@ -282,22 +282,25 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       )}
 
       {/* Section B: Visual breakdown */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl border border-border bg-input/20 p-4">
-          <h4 className="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="grid gap-8 md:grid-cols-2 md:gap-10">
+        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+          <h4 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Evaluation breakdown
           </h4>
-          <div className="h-56 w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                 <Pie
                   data={chartData}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius={50}
-                  outerRadius={80}
+                  innerRadius={55}
+                  outerRadius={90}
                   paddingAngle={3}
                   stroke="hsl(var(--background))"
+                  label={({ value }) => `${value}%`}
+                  labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                  style={{ fontSize: 12, fontWeight: 600, fill: "hsl(var(--foreground))" }}
                 >
                   {chartData.map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -312,13 +315,13 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                   }}
                   formatter={(v: number, n: string) => [`${v}%`, n]}
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <FeedbackList title="Strong points" items={inner.strong_points} tone="success" icon={<ThumbsUp className="size-4" />} />
           <FeedbackList title="Weak points" items={inner.weak_points} tone="destructive" icon={<ThumbsDown className="size-4" />} />
           <FeedbackList title="Suggestions" items={inner.suggestions} tone="primary" icon={<Lightbulb className="size-4" />} />
