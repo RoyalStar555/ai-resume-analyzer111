@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend } from "recharts";
 import { toast } from "sonner";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
