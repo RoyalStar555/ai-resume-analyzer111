@@ -31,6 +31,19 @@ function computeAtsScore(jd: string, resume: string): number {
   return Math.round((matches.length / jdWords.length) * 100);
 }
 
+function extractJson(text: string): unknown {
+  let s = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const start = s.search(/[\{\[]/);
+  const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+  if (start === -1 || end === -1) throw new Error("AI returned no JSON.");
+  s = s.slice(start, end + 1);
+  try {
+    return JSON.parse(s);
+  } catch {
+    s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+    return JSON.parse(s);
+  }
+
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { resumeText: string; jobDescription: string; filename?: string }) =>
