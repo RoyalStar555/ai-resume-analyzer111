@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, X, StopCircle } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
