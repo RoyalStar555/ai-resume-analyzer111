@@ -33,8 +33,9 @@ function Dashboard() {
 
   const [file, setFile] = useState<File | null>(null);
   const [jd, setJd] = useState("");
-  const [parsing, setParsing] = useState(false);
+  const [stage, setStage] = useState<Stage | null>(null);
   const [current, setCurrent] = useState<AnalysisResult | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const history = useQuery({ queryKey: ["resumes"], queryFn: () => listFn() });
 
@@ -42,24 +43,55 @@ function Dashboard() {
     mutationFn: async () => {
       if (!file) throw new Error("Please upload a PDF resume.");
       if (jd.trim().length < 20) throw new Error("Please paste a job description (20+ chars).");
-      setParsing(true);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const throwIfAborted = () => {
+        if (controller.signal.aborted) throw new DOMException("Canceled", "AbortError");
+      };
+
+      setStage("parsing");
       const resumeText = await extractTextFromPdf(file);
-      setParsing(false);
+      throwIfAborted();
       if (resumeText.length < 50) throw new Error("Couldn't extract text from this PDF.");
-      return analyzeFn({
+
+      setStage("scoring");
+      // brief pause so the user can see the stage transition
+      await new Promise((r) => setTimeout(r, 250));
+      throwIfAborted();
+
+      setStage("analyzing");
+      const result = await analyzeFn({
         data: { resumeText, jobDescription: jd, filename: file.name },
+        signal: controller.signal,
       });
+      throwIfAborted();
+
+      setStage("saving");
+      await new Promise((r) => setTimeout(r, 150));
+      return result;
     },
     onSuccess: (res) => {
       setCurrent(res as AnalysisResult);
+      setStage(null);
+      abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
       toast.success(`Analysis complete — ${res.score}% match`);
     },
     onError: (e: any) => {
-      setParsing(false);
+      setStage(null);
+      abortRef.current = null;
+      if (e?.name === "AbortError") {
+        toast("Analysis canceled");
+        return;
+      }
       toast.error(e.message ?? "Analysis failed");
     },
   });
+
+  const cancel = () => {
+    abortRef.current?.abort();
+  };
 
   const del = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { id } }),
@@ -69,7 +101,7 @@ function Dashboard() {
     },
   });
 
-  const running = parsing || analyze.isPending;
+  const running = stage !== null;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -122,28 +154,36 @@ function Dashboard() {
             </label>
           </div>
 
-          <Button
-            type="submit"
-            disabled={running}
-            size="lg"
-            className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
-          >
+          {running && <StageTracker active={stage!} />}
+
+          <div className="flex gap-3">
             {running ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                {parsing ? "Reading PDF…" : "Analyzing with AI…"}
-              </>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={cancel}
+                className="w-full"
+              >
+                <StopCircle className="mr-2 size-4" />
+                Cancel analysis
+              </Button>
             ) : (
-              <>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+              >
                 <Sparkles className="mr-2 size-4" />
                 Analyze match
-              </>
+              </Button>
             )}
-          </Button>
+          </div>
         </form>
 
         {current && <AnalysisCard result={current} />}
       </div>
+
 
       <aside className="space-y-4">
         <h2 className="font-display text-lg font-semibold">Recent analyses</h2>
