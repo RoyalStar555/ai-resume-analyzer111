@@ -43,6 +43,8 @@ function extractJson(text: string): unknown {
     s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
     return JSON.parse(s);
   }
+}
+
 
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
