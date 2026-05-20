@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { extractTextFromPdf } from "@/lib/pdf-parser";
@@ -8,8 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, X, StopCircle } from "lucide-react";
 import { toast } from "sonner";
+
+type Stage = "parsing" | "scoring" | "analyzing" | "saving";
+const STAGES: { key: Stage; label: string }[] = [
+  { key: "parsing", label: "Reading PDF" },
+  { key: "scoring", label: "Computing ATS keyword score" },
+  { key: "analyzing", label: "Analyzing with Gemini AI" },
+  { key: "saving", label: "Saving results" },
+];
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
