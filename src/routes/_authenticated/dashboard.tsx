@@ -324,3 +324,47 @@ function Section({
     </div>
   );
 }
+
+function StageTracker({ active }: { active: Stage }) {
+  const activeIdx = STAGES.findIndex((s) => s.key === active);
+  return (
+    <ol className="space-y-2 rounded-xl border border-border bg-input/30 p-4">
+      {STAGES.map((s, i) => {
+        const state = i < activeIdx ? "done" : i === activeIdx ? "active" : "pending";
+        return (
+          <li key={s.key} className="flex items-center gap-3 text-sm">
+            <span
+              className={
+                "grid size-6 place-items-center rounded-full border " +
+                (state === "done"
+                  ? "border-success/50 bg-success/15 text-success"
+                  : state === "active"
+                    ? "border-primary/50 bg-primary/15 text-primary"
+                    : "border-border bg-background/40 text-muted-foreground")
+              }
+            >
+              {state === "done" ? (
+                <Check className="size-3.5" />
+              ) : state === "active" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <span className="size-1.5 rounded-full bg-current opacity-50" />
+              )}
+            </span>
+            <span
+              className={
+                state === "pending"
+                  ? "text-muted-foreground"
+                  : state === "active"
+                    ? "font-medium"
+                    : ""
+              }
+            >
+              {s.label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
