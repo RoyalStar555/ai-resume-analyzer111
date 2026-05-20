@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend } from "recharts";
 import { toast } from "sonner";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
@@ -246,10 +247,15 @@ function Dashboard() {
 
 function AnalysisCard({ result }: { result: AnalysisResult }) {
   const { score, analysis } = result;
+  const inner = analysis.analysis;
   const tone = score >= 70 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--destructive)";
+
+  const CHART_COLORS = ["hsl(174 72% 56%)", "hsl(350 80% 60%)", "hsl(230 80% 65%)"];
+  const chartData = (analysis.chart_data ?? []).filter((d) => d.value > 0);
 
   return (
     <div className="glass space-y-6 rounded-2xl p-6 shadow-card">
+      {/* Section A: Top-level verdict */}
       <div className="flex items-center gap-4">
         <div
           className="grid size-20 place-items-center rounded-2xl text-2xl font-bold"
@@ -262,24 +268,74 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             <Target className="size-4" /> ATS keyword match
           </div>
           <Progress value={score} className="mt-2" />
-          <p className="mt-2 text-sm">{analysis.summary}</p>
         </div>
       </div>
 
-      <Section title="Skills detected in your resume" items={analysis.resume_skills} tone="primary" />
-      <Section title="Skills the job requires" items={analysis.job_description_skills} tone="muted" />
-      <Section
-        title="Missing or weak skills to address"
-        items={analysis.missing_skills}
-        tone="destructive"
-      />
+      {analysis.harsh_feedback_summary && (
+        <div className="flex gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
+          <div>
+            <h4 className="font-display text-sm font-semibold text-destructive">Recruiter's verdict</h4>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/90">{analysis.harsh_feedback_summary}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Section B: Visual breakdown */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-xl border border-border bg-input/20 p-4">
+          <h4 className="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Evaluation breakdown
+          </h4>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  stroke="hsl(var(--background))"
+                >
+                  {chartData.map((_, i) => (
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <RTooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number, n: string) => [`${v}%`, n]}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <FeedbackList title="Strong points" items={inner.strong_points} tone="success" icon={<ThumbsUp className="size-4" />} />
+          <FeedbackList title="Weak points" items={inner.weak_points} tone="destructive" icon={<ThumbsDown className="size-4" />} />
+          <FeedbackList title="Suggestions" items={inner.suggestions} tone="primary" icon={<Lightbulb className="size-4" />} />
+        </div>
+      </div>
+
+      {/* Section C: Preserved badges + rewrites */}
+      <Section title="Skills detected in your resume" items={inner.resume_skills} tone="primary" />
+      <Section title="Skills the job requires" items={inner.job_description_skills} tone="muted" />
+      <Section title="Missing or weak skills to address" items={inner.missing_skills} tone="destructive" />
 
       <div>
         <h4 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           <FileText className="size-4" /> Tailored bullet rewrites
         </h4>
         <ul className="space-y-2">
-          {analysis.bullet_point_improvements.map((b, i) => (
+          {inner.bullet_point_improvements.map((b, i) => (
             <li
               key={i}
               className="rounded-xl border border-border bg-input/30 p-4 text-sm leading-relaxed"
@@ -292,6 +348,39 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
     </div>
   );
 }
+
+function FeedbackList({
+  title,
+  items,
+  tone,
+  icon,
+}: {
+  title: string;
+  items: string[];
+  tone: "success" | "destructive" | "primary";
+  icon: React.ReactNode;
+}) {
+  if (!items?.length) return null;
+  const color =
+    tone === "success"
+      ? "text-success border-success/30 bg-success/10"
+      : tone === "destructive"
+        ? "text-destructive border-destructive/30 bg-destructive/10"
+        : "text-primary border-primary/30 bg-primary/10";
+  return (
+    <div className={`rounded-xl border p-3 ${color}`}>
+      <h5 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+        {icon} {title}
+      </h5>
+      <ul className="space-y-1 text-sm text-foreground/90">
+        {items.map((it, i) => (
+          <li key={i} className="leading-relaxed">• {it}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 
 function Section({
   title,

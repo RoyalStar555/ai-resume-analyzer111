@@ -4,14 +4,26 @@ import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
 import { generateText } from "ai";
 import { z } from "zod";
 
+const ChartDatumSchema = z.object({
+  name: z.string(),
+  value: z.number(),
+});
+
+const AnalysisInnerSchema = z.object({
+  strong_points: z.array(z.string()).default([]),
+  weak_points: z.array(z.string()).default([]),
+  suggestions: z.array(z.string()).default([]),
+  resume_skills: z.array(z.string()).default([]),
+  job_description_skills: z.array(z.string()).default([]),
+  missing_skills: z.array(z.string()).default([]),
+  bullet_point_improvements: z.array(z.string()).default([]),
+});
+
 const AnalysisSchema = z.object({
-  resume_skills: z.array(z.string()).describe("Core technical/professional skills found in the resume"),
-  job_description_skills: z.array(z.string()).describe("Core skills the job description requires"),
-  missing_skills: z.array(z.string()).describe("Skills in the JD that are missing or weak in the resume"),
-  bullet_point_improvements: z
-    .array(z.string())
-    .describe("2-4 tailored resume bullet rewrites with action verbs and quantifiable results"),
-  summary: z.string().describe("A 2-3 sentence executive summary of fit and recommended focus areas"),
+  success: z.boolean().default(true),
+  harsh_feedback_summary: z.string(),
+  chart_data: z.array(ChartDatumSchema).min(1),
+  analysis: AnalysisInnerSchema,
 });
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
@@ -45,7 +57,6 @@ function extractJson(text: string): unknown {
   }
 }
 
-
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { resumeText: string; jobDescription: string; filename?: string }) =>
@@ -71,19 +82,30 @@ export const analyzeResume = createServerFn({ method: "POST" })
     try {
       const { text } = await generateText({
         model,
-        prompt: `You are an expert technical recruiter and ATS optimization expert. Analyze the resume against the job description.
+        prompt: `You are a ruthless, highly critical Senior Technical Recruiter and an advanced ATS. Critically analyze the resume against the job description. Do not give the candidate the benefit of the doubt. Penalize missing or vaguely mentioned required skills heavily.
 
-Return ONLY a single JSON object (no markdown, no prose, no code fences) matching EXACTLY this TypeScript shape:
-
+Use this EXACT JSON schema response framework:
 {
-  "resume_skills": string[],           // core technical/professional skills found in the resume
-  "job_description_skills": string[],  // core skills the job description requires
-  "missing_skills": string[],          // skills in the JD missing or weak in the resume
-  "bullet_point_improvements": string[], // 2-4 tailored resume bullet rewrites with action verbs and metrics
-  "summary": string                    // 2-3 sentence executive summary of fit and focus areas
+  "success": true,
+  "harsh_feedback_summary": "Write 2-3 highly critical sentences explaining exactly why this candidate might be rejected based on the job requirements.",
+  "chart_data": [
+    { "name": "Strong Points", "value": <integer out of 100> },
+    { "name": "Weak Points", "value": <integer out of 100> },
+    { "name": "Actionable Suggestions", "value": <integer out of 100> }
+  ],
+  "analysis": {
+    "strong_points": ["List 2-3 explicit strengths"],
+    "weak_points": ["List 3-4 critical weaknesses or missing tech"],
+    "suggestions": ["List 2-3 strategic suggestions to improve"],
+    "resume_skills": ["list core technical skills identified in the resume"],
+    "job_description_skills": ["list core technical skills expected in the job description"],
+    "missing_skills": ["skills explicit in job description but missing or weak in resume"],
+    "bullet_point_improvements": ["provide 2 tailored bullet points rewritten for high impact using quantifiable metrics"]
+  }
 }
+Note: Ensure the 'value' integers in 'chart_data' add up to exactly 100.
 
-Use these EXACT keys. Do not invent other keys (no "match_score", "structural_critique", etc.).
+Return ONLY the JSON object — no markdown, no code fences, no prose.
 
 JOB DESCRIPTION:
 ${data.jobDescription}
@@ -92,6 +114,15 @@ RESUME:
 ${data.resumeText}`,
       });
       analysis = AnalysisSchema.parse(extractJson(text));
+
+      // Normalize chart_data to sum to 100
+      const sum = analysis.chart_data.reduce((a, b) => a + (b.value || 0), 0);
+      if (sum > 0 && sum !== 100) {
+        analysis.chart_data = analysis.chart_data.map((d) => ({
+          ...d,
+          value: Math.round((d.value / sum) * 100),
+        }));
+      }
     } catch (err: any) {
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
