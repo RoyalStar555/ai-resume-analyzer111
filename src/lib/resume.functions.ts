@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 
 const AnalysisSchema = z.object({
@@ -31,6 +31,21 @@ function computeAtsScore(jd: string, resume: string): number {
   return Math.round((matches.length / jdWords.length) * 100);
 }
 
+function extractJson(text: string): unknown {
+  let s = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const start = s.search(/[\{\[]/);
+  const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+  if (start === -1 || end === -1) throw new Error("AI returned no JSON.");
+  s = s.slice(start, end + 1);
+  try {
+    return JSON.parse(s);
+  } catch {
+    s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+    return JSON.parse(s);
+  }
+}
+
+
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { resumeText: string; jobDescription: string; filename?: string }) =>
@@ -54,20 +69,29 @@ export const analyzeResume = createServerFn({ method: "POST" })
 
     let analysis: ResumeAnalysis;
     try {
-      const { experimental_output } = await generateText({
+      const { text } = await generateText({
         model,
-        experimental_output: Output.object({ schema: AnalysisSchema }),
-        prompt: `You are an expert technical recruiter and ATS optimization expert. Analyze the following resume against the job description and return structured findings.
+        prompt: `You are an expert technical recruiter and ATS optimization expert. Analyze the resume against the job description.
+
+Return ONLY a single JSON object (no markdown, no prose, no code fences) matching EXACTLY this TypeScript shape:
+
+{
+  "resume_skills": string[],           // core technical/professional skills found in the resume
+  "job_description_skills": string[],  // core skills the job description requires
+  "missing_skills": string[],          // skills in the JD missing or weak in the resume
+  "bullet_point_improvements": string[], // 2-4 tailored resume bullet rewrites with action verbs and metrics
+  "summary": string                    // 2-3 sentence executive summary of fit and focus areas
+}
+
+Use these EXACT keys. Do not invent other keys (no "match_score", "structural_critique", etc.).
 
 JOB DESCRIPTION:
 ${data.jobDescription}
 
 RESUME:
-${data.resumeText}
-
-Provide concrete, role-specific bullet rewrites — not generic advice.`,
+${data.resumeText}`,
       });
-      analysis = experimental_output;
+      analysis = AnalysisSchema.parse(extractJson(text));
     } catch (err: any) {
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
