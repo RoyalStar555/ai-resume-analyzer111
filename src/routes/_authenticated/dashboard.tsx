@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap, ShieldAlert, Activity } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { toast } from "sonner";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
@@ -350,6 +350,100 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
           <FeedbackList title="Suggestions" items={inner.suggestions} tone="primary" icon={<Lightbulb className="size-4" />} />
         </div>
       </div>
+
+      {/* Advanced visualizations: Radar competency + Market alignment */}
+      {(analysis.advanced_metrics?.radar_competency?.length ?? 0) +
+        (analysis.advanced_metrics?.market_alignment?.length ?? 0) >
+        0 && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {(analysis.advanced_metrics?.radar_competency?.length ?? 0) > 0 && (
+            <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+              <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <Activity className="size-4" /> Competency radar
+              </h4>
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={analysis.advanced_metrics.radar_competency} outerRadius="75%">
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="domain" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                    <Radar name="Score" dataKey="score" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.45} />
+                    <RTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {(analysis.advanced_metrics?.market_alignment?.length ?? 0) > 0 && (
+            <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+              <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <TrendingUp className="size-4" /> Market alignment
+              </h4>
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analysis.advanced_metrics.market_alignment} margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
+                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                    <XAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                    <RTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="candidate" name="Candidate" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="market" name="Market 2026" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Deep analysis: Impact audit + Red flags */}
+      {(analysis.advanced_metrics?.deep_analysis?.impact_audit ||
+        (analysis.advanced_metrics?.deep_analysis?.red_flags?.length ?? 0) > 0) && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {analysis.advanced_metrics?.deep_analysis?.impact_audit && (
+            <div className="glass rounded-xl border border-primary/30 p-6 shadow-card">
+              <h4 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-primary">
+                <Activity className="size-4" /> Impact audit
+              </h4>
+              <p className="text-sm leading-relaxed text-foreground/90">
+                {analysis.advanced_metrics.deep_analysis.impact_audit}
+              </p>
+            </div>
+          )}
+          {(analysis.advanced_metrics?.deep_analysis?.red_flags?.length ?? 0) > 0 && (
+            <div className="glass rounded-xl border border-destructive/40 p-6 shadow-card">
+              <h4 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-destructive">
+                <ShieldAlert className="size-4" /> Critical red flags
+              </h4>
+              <ul className="space-y-2 text-sm text-foreground/90">
+                {analysis.advanced_metrics.deep_analysis.red_flags.map((rf, i) => (
+                  <li key={i} className="flex gap-2 leading-relaxed">
+                    <span className="mt-1 size-1.5 shrink-0 rounded-full bg-destructive" />
+                    <span>{rf}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Advanced metrics */}
       {(aspects.length > 0 || interviewProb > 0) && (

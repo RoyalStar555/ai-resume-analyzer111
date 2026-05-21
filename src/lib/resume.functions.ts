@@ -30,6 +30,36 @@ const RealWorldSchema = z.object({
   market_upskill_advice: z.string().default(""),
 });
 
+const RadarCompetencySchema = z.object({
+  domain: z.string(),
+  score: z.number().min(0).max(100),
+});
+
+const MarketAlignmentSchema = z.object({
+  category: z.string(),
+  candidate: z.number().min(0).max(100),
+  market: z.number().min(0).max(100),
+});
+
+const DeepAnalysisSchema = z.object({
+  impact_audit: z.string().default(""),
+  red_flags: z.array(z.string()).default([]),
+});
+
+const CareerMappingSchema = z.object({
+  target_roles: z.array(z.string()).default([]),
+  target_companies: z.array(z.string()).default([]),
+  upskill_advice: z.string().default(""),
+});
+
+const AdvancedMetricsSchema = z.object({
+  interview_probability: z.number().min(0).max(100).default(0),
+  radar_competency: z.array(RadarCompetencySchema).default([]),
+  market_alignment: z.array(MarketAlignmentSchema).default([]),
+  deep_analysis: DeepAnalysisSchema.default({ impact_audit: "", red_flags: [] }),
+  career_mapping: CareerMappingSchema.default({ target_roles: [], target_companies: [], upskill_advice: "" }),
+});
+
 const AnalysisSchema = z.object({
   success: z.boolean().default(true),
   harsh_feedback_summary: z.string(),
@@ -38,6 +68,13 @@ const AnalysisSchema = z.object({
   interview_probability: z.number().min(0).max(100).default(0),
   aspect_scores: z.array(AspectScoreSchema).default([]),
   real_world_connect: RealWorldSchema.default({ target_roles: [], target_companies: [], market_upskill_advice: "" }),
+  advanced_metrics: AdvancedMetricsSchema.default({
+    interview_probability: 0,
+    radar_competency: [],
+    market_alignment: [],
+    deep_analysis: { impact_audit: "", red_flags: [] },
+    career_mapping: { target_roles: [], target_companies: [], upskill_advice: "" },
+  }),
 });
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
@@ -96,27 +133,42 @@ export const analyzeResume = createServerFn({ method: "POST" })
     try {
       const { text } = await generateText({
         model,
-        prompt: `You are a ruthless, highly critical Senior Technical Recruiter and an advanced ATS. Critically analyze the resume against the job description. Do not give the candidate the benefit of the doubt. Penalize missing or vaguely mentioned required skills heavily.
+        prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
 
-Use this EXACT JSON schema response framework:
+Use this EXACT merged JSON schema (return BOTH the new advanced_metrics AND the legacy analysis fields):
 {
   "success": true,
-  "harsh_feedback_summary": "Write 2-3 highly critical sentences explaining exactly why this candidate might be rejected based on the job requirements.",
+  "harsh_feedback_summary": "2-3 highly critical sentences explaining exactly why this candidate might be rejected.",
   "chart_data": [
-    { "name": "Strong Points", "value": <integer out of 100> },
-    { "name": "Weak Points", "value": <integer out of 100> },
-    { "name": "Actionable Suggestions", "value": <integer out of 100> }
+    { "name": "Strong Points", "value": <int> },
+    { "name": "Weak Points", "value": <int> },
+    { "name": "Actionable Suggestions", "value": <int> }
   ],
-  "analysis": {
-    "strong_points": ["List 2-3 explicit strengths"],
-    "weak_points": ["List 3-4 critical weaknesses or missing tech"],
-    "suggestions": ["List 2-3 strategic suggestions to improve"],
-    "resume_skills": ["list core technical skills identified in the resume"],
-    "job_description_skills": ["list core technical skills expected in the job description"],
-    "missing_skills": ["skills explicit in job description but missing or weak in resume"],
-    "bullet_point_improvements": ["provide 2 tailored bullet points rewritten for high impact using quantifiable metrics"]
+  "advanced_metrics": {
+    "interview_probability": <int 0-100>,
+    "radar_competency": [
+      { "domain": "Frontend", "score": <int 0-100> },
+      { "domain": "Backend", "score": <int 0-100> },
+      { "domain": "Database", "score": <int 0-100> },
+      { "domain": "Cloud/DevOps", "score": <int 0-100> },
+      { "domain": "Architecture", "score": <int 0-100> }
+    ],
+    "market_alignment": [
+      { "category": "Languages", "candidate": <int 0-100>, "market": <int 0-100> },
+      { "category": "Frameworks", "candidate": <int 0-100>, "market": <int 0-100> },
+      { "category": "Infrastructure", "candidate": <int 0-100>, "market": <int 0-100> }
+    ],
+    "deep_analysis": {
+      "impact_audit": "Detailed critique on whether the bullet points show measurable business impact or just list duties.",
+      "red_flags": ["List of 3 deal-breaking red flags"]
+    },
+    "career_mapping": {
+      "target_roles": ["3 specific job titles this resume qualifies for"],
+      "target_companies": ["3 real-world companies that hire this stack"],
+      "upskill_advice": "Hyper-specific advice on what to learn next."
+    }
   },
-  "interview_probability": <integer 0-100 representing the likelihood of getting a callback>,
+  "interview_probability": <int 0-100, mirror of advanced_metrics.interview_probability>,
   "aspect_scores": [
     { "subject": "Technical Depth", "score": <int 0-100> },
     { "subject": "Business Impact", "score": <int 0-100> },
@@ -124,12 +176,21 @@ Use this EXACT JSON schema response framework:
     { "subject": "Leadership/Initiative", "score": <int 0-100> }
   ],
   "real_world_connect": {
-    "target_roles": ["List 2-3 exact job titles this resume actually qualifies for right now"],
-    "target_companies": ["List 3 specific real-world tech companies whose ATS profiles match this resume's vibe and tech stack"],
-    "market_upskill_advice": "One specific, industry-relevant sentence on what to learn next to become highly hirable."
+    "target_roles": ["mirror advanced_metrics.career_mapping.target_roles"],
+    "target_companies": ["mirror advanced_metrics.career_mapping.target_companies"],
+    "market_upskill_advice": "mirror advanced_metrics.career_mapping.upskill_advice"
+  },
+  "analysis": {
+    "strong_points": ["List 2-3 explicit strengths"],
+    "weak_points": ["List 3-4 critical weaknesses or missing tech"],
+    "suggestions": ["List 2-3 strategic suggestions to improve"],
+    "resume_skills": ["core technical skills identified in the resume"],
+    "job_description_skills": ["core technical skills expected in the job description"],
+    "missing_skills": ["skills explicit in job description but missing or weak in resume"],
+    "bullet_point_improvements": ["2 tailored bullet points rewritten for high impact with quantifiable metrics"]
   }
 }
-Note: Ensure the 'value' integers in 'chart_data' add up to exactly 100.
+Note: 'chart_data' integers must add up to exactly 100.
 
 Return ONLY the JSON object — no markdown, no code fences, no prose.
 
