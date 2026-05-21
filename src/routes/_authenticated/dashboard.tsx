@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap, ShieldAlert, Activity } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { toast } from "sonner";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
