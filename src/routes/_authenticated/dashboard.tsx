@@ -382,7 +382,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             </div>
           )}
 
-          {analysis.advanced_metrics?.market_alignment?.length > 0 && (
+          {(analysis.advanced_metrics?.market_alignment?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
               <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 <TrendingUp className="size-4" /> Market alignment
