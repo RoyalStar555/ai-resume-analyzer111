@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend } from "recharts";
+import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { toast } from "sonner";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
@@ -250,11 +250,35 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
   const inner = analysis.analysis;
   const tone = score >= 70 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--destructive)";
 
-  const CHART_COLORS = ["hsl(174 72% 56%)", "hsl(350 80% 60%)", "hsl(230 80% 65%)"];
+  const CHART_COLORS = ["#06b6d4", "#f43f5e", "#8b5cf6"];
   const chartData = (analysis.chart_data ?? []).filter((d) => d.value > 0);
+  const aspects = analysis.aspect_scores ?? [];
+  const rwc = analysis.real_world_connect ?? { target_roles: [], target_companies: [], market_upskill_advice: "" };
+  const interviewProb = Math.max(0, Math.min(100, Math.round(analysis.interview_probability ?? 0)));
+
+  const handlePrint = () => window.print();
+  const handleShare = async () => {
+    const txt = `ATS Match: ${score}% — Interview probability: ${interviewProb}%\n\nRecruiter's verdict: ${analysis.harsh_feedback_summary}`;
+    try {
+      await navigator.clipboard.writeText(txt);
+      toast.success("Summary copied to clipboard");
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  };
 
   return (
-    <div className="glass space-y-6 rounded-2xl p-6 shadow-card">
+    <div className="glass space-y-6 rounded-2xl p-6 shadow-card print:bg-white print:text-black">
+      {/* Export & share */}
+      <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+        <Button size="sm" variant="outline" onClick={handlePrint}>
+          <Download className="mr-2 size-4" /> Download report (PDF)
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleShare}>
+          <Share2 className="mr-2 size-4" /> Copy shareable summary
+        </Button>
+      </div>
+
       {/* Section A: Top-level verdict */}
       <div className="flex items-center gap-4">
         <div
@@ -300,7 +324,6 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                   stroke="hsl(var(--background))"
                   label={({ value }) => `${value}%`}
                   labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
-                  style={{ fontSize: 12, fontWeight: 600, fill: "hsl(var(--foreground))" }}
                 >
                   {chartData.map((_, i) => (
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -327,6 +350,98 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
           <FeedbackList title="Suggestions" items={inner.suggestions} tone="primary" icon={<Lightbulb className="size-4" />} />
         </div>
       </div>
+
+      {/* Advanced metrics */}
+      {(aspects.length > 0 || interviewProb > 0) && (
+        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+          <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <TrendingUp className="size-4" /> Advanced metrics
+          </h4>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <div className="mb-2 flex items-baseline justify-between">
+                <span className="text-sm text-muted-foreground">Interview prediction</span>
+                <span className="font-display text-2xl font-bold text-primary">{interviewProb}%</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-input">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary via-fuchsia-500 to-rose-500 transition-all"
+                  style={{ width: `${interviewProb}%` }}
+                />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Estimated likelihood of receiving a callback for this role based on resume strength.
+              </p>
+            </div>
+
+            <div className="h-64 w-full">
+              {aspects.length > 0 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={aspects} outerRadius="75%">
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                    <Radar name="Score" dataKey="score" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.45} />
+                    <RTooltip
+                      contentStyle={{
+                        background: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Career mapping */}
+      {(rwc.target_roles.length > 0 || rwc.target_companies.length > 0 || rwc.market_upskill_advice) && (
+        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+          <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <Building2 className="size-4" /> Career mapping
+          </h4>
+          <div className="space-y-4">
+            {rwc.target_roles.length > 0 && (
+              <div>
+                <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Roles you qualify for now</h5>
+                <div className="flex flex-wrap gap-2">
+                  {rwc.target_roles.map((r, i) => (
+                    <span key={i} className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {rwc.target_companies.length > 0 && (
+              <div>
+                <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Companies that hire this stack</h5>
+                <div className="flex flex-wrap gap-2">
+                  {rwc.target_companies.map((c, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input/40 px-3 py-1 text-xs font-medium">
+                      <Building2 className="size-3" /> {c}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">These companies hire for this specific stack and resume profile.</p>
+              </div>
+            )}
+            {rwc.market_upskill_advice && (
+              <div className="flex gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4">
+                <GraduationCap className="mt-0.5 size-5 shrink-0 text-primary" />
+                <div>
+                  <h5 className="font-display text-sm font-semibold text-primary">Upskill next</h5>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground/90">{rwc.market_upskill_advice}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Section C: Preserved badges + rewrites */}
       <Section title="Skills detected in your resume" items={inner.resume_skills} tone="primary" />
