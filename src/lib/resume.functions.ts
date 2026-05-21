@@ -30,6 +30,36 @@ const RealWorldSchema = z.object({
   market_upskill_advice: z.string().default(""),
 });
 
+const RadarCompetencySchema = z.object({
+  domain: z.string(),
+  score: z.number().min(0).max(100),
+});
+
+const MarketAlignmentSchema = z.object({
+  category: z.string(),
+  candidate: z.number().min(0).max(100),
+  market: z.number().min(0).max(100),
+});
+
+const DeepAnalysisSchema = z.object({
+  impact_audit: z.string().default(""),
+  red_flags: z.array(z.string()).default([]),
+});
+
+const CareerMappingSchema = z.object({
+  target_roles: z.array(z.string()).default([]),
+  target_companies: z.array(z.string()).default([]),
+  upskill_advice: z.string().default(""),
+});
+
+const AdvancedMetricsSchema = z.object({
+  interview_probability: z.number().min(0).max(100).default(0),
+  radar_competency: z.array(RadarCompetencySchema).default([]),
+  market_alignment: z.array(MarketAlignmentSchema).default([]),
+  deep_analysis: DeepAnalysisSchema.default({ impact_audit: "", red_flags: [] }),
+  career_mapping: CareerMappingSchema.default({ target_roles: [], target_companies: [], upskill_advice: "" }),
+});
+
 const AnalysisSchema = z.object({
   success: z.boolean().default(true),
   harsh_feedback_summary: z.string(),
@@ -38,6 +68,13 @@ const AnalysisSchema = z.object({
   interview_probability: z.number().min(0).max(100).default(0),
   aspect_scores: z.array(AspectScoreSchema).default([]),
   real_world_connect: RealWorldSchema.default({ target_roles: [], target_companies: [], market_upskill_advice: "" }),
+  advanced_metrics: AdvancedMetricsSchema.default({
+    interview_probability: 0,
+    radar_competency: [],
+    market_alignment: [],
+    deep_analysis: { impact_audit: "", red_flags: [] },
+    career_mapping: { target_roles: [], target_companies: [], upskill_advice: "" },
+  }),
 });
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
