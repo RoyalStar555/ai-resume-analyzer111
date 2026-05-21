@@ -19,11 +19,25 @@ const AnalysisInnerSchema = z.object({
   bullet_point_improvements: z.array(z.string()).default([]),
 });
 
+const AspectScoreSchema = z.object({
+  subject: z.string(),
+  score: z.number().min(0).max(100),
+});
+
+const RealWorldSchema = z.object({
+  target_roles: z.array(z.string()).default([]),
+  target_companies: z.array(z.string()).default([]),
+  market_upskill_advice: z.string().default(""),
+});
+
 const AnalysisSchema = z.object({
   success: z.boolean().default(true),
   harsh_feedback_summary: z.string(),
   chart_data: z.array(ChartDatumSchema).min(1),
   analysis: AnalysisInnerSchema,
+  interview_probability: z.number().min(0).max(100).default(0),
+  aspect_scores: z.array(AspectScoreSchema).default([]),
+  real_world_connect: RealWorldSchema.default({ target_roles: [], target_companies: [], market_upskill_advice: "" }),
 });
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
