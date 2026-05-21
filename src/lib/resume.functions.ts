@@ -115,6 +115,18 @@ Use this EXACT JSON schema response framework:
     "job_description_skills": ["list core technical skills expected in the job description"],
     "missing_skills": ["skills explicit in job description but missing or weak in resume"],
     "bullet_point_improvements": ["provide 2 tailored bullet points rewritten for high impact using quantifiable metrics"]
+  },
+  "interview_probability": <integer 0-100 representing the likelihood of getting a callback>,
+  "aspect_scores": [
+    { "subject": "Technical Depth", "score": <int 0-100> },
+    { "subject": "Business Impact", "score": <int 0-100> },
+    { "subject": "Formatting & Clarity", "score": <int 0-100> },
+    { "subject": "Leadership/Initiative", "score": <int 0-100> }
+  ],
+  "real_world_connect": {
+    "target_roles": ["List 2-3 exact job titles this resume actually qualifies for right now"],
+    "target_companies": ["List 3 specific real-world tech companies whose ATS profiles match this resume's vibe and tech stack"],
+    "market_upskill_advice": "One specific, industry-relevant sentence on what to learn next to become highly hirable."
   }
 }
 Note: Ensure the 'value' integers in 'chart_data' add up to exactly 100.
