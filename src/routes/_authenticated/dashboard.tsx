@@ -537,7 +537,59 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         </div>
       )}
 
+      {/* Career mapping (from advanced_metrics) */}
+      {(() => {
+        const cm = analysis.advanced_metrics?.career_mapping;
+        const roles = cm?.target_roles ?? [];
+        const companies = cm?.target_companies ?? [];
+        const advice = cm?.upskill_advice ?? "";
+        if (roles.length === 0 && companies.length === 0 && !advice) return null;
+        return (
+          <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+            <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <Building2 className="size-4" /> Career mapping
+            </h4>
+            <div className="space-y-4">
+              {roles.length > 0 && (
+                <div>
+                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target roles</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {roles.map((r, i) => (
+                      <span key={i} className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {companies.length > 0 && (
+                <div>
+                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target companies</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {companies.map((c, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input/40 px-3 py-1 text-xs font-medium">
+                        <Building2 className="size-3" /> {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {advice && (
+                <div className="flex gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4">
+                  <GraduationCap className="mt-0.5 size-5 shrink-0 text-primary" />
+                  <div>
+                    <h5 className="font-display text-sm font-semibold text-primary">Upskill advice</h5>
+                    <p className="mt-1 text-sm leading-relaxed text-foreground/90">{advice}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Section C: Preserved badges + rewrites */}
+
       <Section title="Skills detected in your resume" items={inner.resume_skills} tone="primary" />
       <Section title="Skills the job requires" items={inner.job_description_skills} tone="muted" />
       <Section title="Missing or weak skills to address" items={inner.missing_skills} tone="destructive" />
