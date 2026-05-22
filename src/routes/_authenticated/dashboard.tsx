@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 type AnalysisResult = { id: string; score: number; analysis: ResumeAnalysis; createdAt: string };
 
-const EMPTY_ANALYSIS_INNER: ResumeAnalysis["analysis"] = {
+const EMPTY_ANALYSIS_INNER = {
   strong_points: [],
   weak_points: [],
   suggestions: [],
@@ -42,32 +42,42 @@ function normalizeAnalysis(value: unknown): ResumeAnalysis {
     analysis.analysis && typeof analysis.analysis === "object"
       ? (analysis.analysis as Partial<ResumeAnalysis["analysis"]>)
       : {};
+  const realWorld =
+    analysis.real_world_connect && typeof analysis.real_world_connect === "object"
+      ? analysis.real_world_connect
+      : { target_roles: [], target_companies: [], market_upskill_advice: "" };
+  const advanced =
+    analysis.advanced_metrics && typeof analysis.advanced_metrics === "object"
+      ? analysis.advanced_metrics
+      : undefined;
   return {
     success: analysis.success ?? true,
     harsh_feedback_summary: analysis.harsh_feedback_summary ?? "",
     chart_data: analysis.chart_data ?? [],
     analysis: {
-      strong_points: inner.strong_points ?? [],
-      weak_points: inner.weak_points ?? [],
-      suggestions: inner.suggestions ?? [],
-      resume_skills: inner.resume_skills ?? [],
-      job_description_skills: inner.job_description_skills ?? [],
-      missing_skills: inner.missing_skills ?? [],
-      bullet_point_improvements: inner.bullet_point_improvements ?? [],
+      ...EMPTY_ANALYSIS_INNER,
+      ...inner,
     },
     interview_probability: analysis.interview_probability ?? 0,
     aspect_scores: analysis.aspect_scores ?? [],
-    real_world_connect: analysis.real_world_connect ?? {
-      target_roles: [],
-      target_companies: [],
-      market_upskill_advice: "",
+    real_world_connect: {
+      target_roles: realWorld.target_roles ?? [],
+      target_companies: realWorld.target_companies ?? [],
+      market_upskill_advice: realWorld.market_upskill_advice ?? "",
     },
-    advanced_metrics: analysis.advanced_metrics ?? {
-      interview_probability: 0,
-      radar_competency: [],
-      market_alignment: [],
-      deep_analysis: { impact_audit: "", red_flags: [] },
-      career_mapping: { target_roles: [], target_companies: [], upskill_advice: "" },
+    advanced_metrics: {
+      interview_probability: advanced?.interview_probability ?? 0,
+      radar_competency: advanced?.radar_competency ?? [],
+      market_alignment: advanced?.market_alignment ?? [],
+      deep_analysis: {
+        impact_audit: advanced?.deep_analysis?.impact_audit ?? "",
+        red_flags: advanced?.deep_analysis?.red_flags ?? [],
+      },
+      career_mapping: {
+        target_roles: advanced?.career_mapping?.target_roles ?? [],
+        target_companies: advanced?.career_mapping?.target_companies ?? [],
+        upskill_advice: advanced?.career_mapping?.upskill_advice ?? "",
+      },
     },
   };
 }
