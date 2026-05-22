@@ -26,6 +26,52 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 type AnalysisResult = { id: string; score: number; analysis: ResumeAnalysis; createdAt: string };
 
+const EMPTY_ANALYSIS_INNER: ResumeAnalysis["analysis"] = {
+  strong_points: [],
+  weak_points: [],
+  suggestions: [],
+  resume_skills: [],
+  job_description_skills: [],
+  missing_skills: [],
+  bullet_point_improvements: [],
+};
+
+function normalizeAnalysis(value: unknown): ResumeAnalysis {
+  const analysis = (value && typeof value === "object" ? value : {}) as Partial<ResumeAnalysis>;
+  const inner =
+    analysis.analysis && typeof analysis.analysis === "object"
+      ? (analysis.analysis as Partial<ResumeAnalysis["analysis"]>)
+      : {};
+  return {
+    success: analysis.success ?? true,
+    harsh_feedback_summary: analysis.harsh_feedback_summary ?? "",
+    chart_data: analysis.chart_data ?? [],
+    analysis: {
+      strong_points: inner.strong_points ?? [],
+      weak_points: inner.weak_points ?? [],
+      suggestions: inner.suggestions ?? [],
+      resume_skills: inner.resume_skills ?? [],
+      job_description_skills: inner.job_description_skills ?? [],
+      missing_skills: inner.missing_skills ?? [],
+      bullet_point_improvements: inner.bullet_point_improvements ?? [],
+    },
+    interview_probability: analysis.interview_probability ?? 0,
+    aspect_scores: analysis.aspect_scores ?? [],
+    real_world_connect: analysis.real_world_connect ?? {
+      target_roles: [],
+      target_companies: [],
+      market_upskill_advice: "",
+    },
+    advanced_metrics: analysis.advanced_metrics ?? {
+      interview_probability: 0,
+      radar_competency: [],
+      market_alignment: [],
+      deep_analysis: { impact_audit: "", red_flags: [] },
+      career_mapping: { target_roles: [], target_companies: [], upskill_advice: "" },
+    },
+  };
+}
+
 function Dashboard() {
   const analyzeFn = useServerFn(analyzeResume);
   const listFn = useServerFn(listResumes);
@@ -204,7 +250,7 @@ function Dashboard() {
                   setCurrent({
                     id: r.id,
                     score: r.ats_score,
-                    analysis: r.analysis as unknown as ResumeAnalysis,
+                    analysis: normalizeAnalysis(r.analysis),
                     createdAt: r.created_at,
                   })
                 }
