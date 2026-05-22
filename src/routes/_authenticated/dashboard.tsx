@@ -321,12 +321,18 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                   innerRadius={55}
                   outerRadius={90}
                   paddingAngle={3}
-                  stroke="hsl(var(--background))"
+                  stroke="var(--background)"
+                  strokeWidth={2}
+                  isAnimationActive={false}
                   label={({ value }) => `${value}%`}
-                  labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
+                  labelLine={{ stroke: "var(--muted-foreground)", strokeWidth: 1 }}
                 >
                   {chartData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    <Cell
+                      key={i}
+                      fill={CHART_COLORS[i % CHART_COLORS.length]}
+                      style={{ fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                    />
                   ))}
                 </Pie>
                 <RTooltip
