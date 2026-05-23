@@ -317,7 +317,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         <div className="flex gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
           <div>
-            <h4 className="font-display text-sm font-semibold text-destructive">Recruiter's verdict</h4>
+            <h3 className="font-display text-sm font-semibold text-destructive">Recruiter's verdict</h3>
             <p className="mt-1 text-sm leading-relaxed text-foreground/90">{analysis.harsh_feedback_summary}</p>
           </div>
         </div>
@@ -326,9 +326,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {/* Section B: Visual breakdown */}
       <div className="grid gap-8 md:grid-cols-2 md:gap-10">
         <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h4 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Evaluation breakdown
-          </h4>
+          </h3>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
@@ -382,9 +382,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         <div className="grid gap-6 md:grid-cols-2">
           {(analysis.advanced_metrics?.radar_competency?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-              <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 <Activity className="size-4" /> Competency radar
-              </h4>
+              </h3>
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={analysis.advanced_metrics.radar_competency} outerRadius="75%">
@@ -408,9 +408,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 
           {(analysis.advanced_metrics?.market_alignment?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-              <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 <TrendingUp className="size-4" /> Market alignment
-              </h4>
+              </h3>
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analysis.advanced_metrics.market_alignment} margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
@@ -442,9 +442,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         <div className="grid gap-6 md:grid-cols-2">
           {analysis.advanced_metrics?.deep_analysis?.impact_audit && (
             <div className="glass rounded-xl border border-primary/30 p-6 shadow-card">
-              <h4 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-primary">
+              <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-primary">
                 <Activity className="size-4" /> Impact audit
-              </h4>
+              </h3>
               <p className="text-sm leading-relaxed text-foreground/90">
                 {analysis.advanced_metrics.deep_analysis.impact_audit}
               </p>
@@ -452,9 +452,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
           )}
           {(analysis.advanced_metrics?.deep_analysis?.red_flags?.length ?? 0) > 0 && (
             <div className="glass rounded-xl border border-destructive/40 p-6 shadow-card">
-              <h4 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-destructive">
+              <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-destructive">
                 <ShieldAlert className="size-4" /> Critical red flags
-              </h4>
+              </h3>
               <ul className="space-y-2 text-sm text-foreground/90">
                 {analysis.advanced_metrics.deep_analysis.red_flags.map((rf, i) => (
                   <li key={i} className="flex gap-2 leading-relaxed">
@@ -472,9 +472,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {/* Advanced metrics */}
       {(aspects.length > 0 || interviewProb > 0) && (
         <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <TrendingUp className="size-4" /> Advanced metrics
-          </h4>
+          </h3>
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <div className="mb-2 flex items-baseline justify-between">
@@ -519,9 +519,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {/* Career mapping */}
       {(rwc.target_roles.length > 0 || rwc.target_companies.length > 0 || rwc.market_upskill_advice) && (
         <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Building2 className="size-4" /> Career mapping
-          </h4>
+          </h3>
           <div className="space-y-4">
             {rwc.target_roles.length > 0 && (
               <div>
@@ -570,9 +570,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         if (roles.length === 0 && companies.length === 0 && !advice) return null;
         return (
           <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-            <h4 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               <Building2 className="size-4" /> Career mapping
-            </h4>
+            </h3>
             <div className="space-y-4">
               {roles.length > 0 && (
                 <div>
@@ -619,9 +619,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       <Section title="Missing or weak skills to address" items={inner.missing_skills} tone="destructive" />
 
       <div>
-        <h4 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           <FileText className="size-4" /> Tailored bullet rewrites
-        </h4>
+        </h3>
         <ul className="space-y-2">
           {inner.bullet_point_improvements.map((b, i) => (
             <li
@@ -688,9 +688,9 @@ function Section({
         : "border-border bg-input/40 text-foreground";
   return (
     <div>
-      <h4 className="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+      <h3 className="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
-      </h4>
+      </h3>
       <div className="flex flex-wrap gap-2">
         {items.map((s, i) => (
           <span key={i} className={`rounded-full border px-3 py-1 text-xs font-medium ${cls}`}>
