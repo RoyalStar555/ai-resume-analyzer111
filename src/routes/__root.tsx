@@ -73,14 +73,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Beat the bots. Upload your resume and a job description to get an AI-powered ATS match score and tailored rewrites.",
       },
-      { property: "og:title", content: "ATS Lens — AI Resume Optimizer" },
-      { property: "og:description", content: "AI Resume ATS Analyzer optimizes resumes by comparing them against job descriptions using AI." },
+      { property: "og:site_name", content: "ATS Lens" },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "ATS Lens — AI Resume Optimizer" },
-      { name: "description", content: "AI Resume ATS Analyzer optimizes resumes by comparing them against job descriptions using AI." },
-      { name: "twitter:description", content: "AI Resume ATS Analyzer optimizes resumes by comparing them against job descriptions using AI." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f266161c-5fcd-44cb-a297-ee22c4a82dc8/id-preview-f76b12ff--2ddb757c-33b9-454c-92ec-776503d8d613.lovable.app-1779169572676.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f266161c-5fcd-44cb-a297-ee22c4a82dc8/id-preview-f76b12ff--2ddb757c-33b9-454c-92ec-776503d8d613.lovable.app-1779169572676.png" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -88,6 +82,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "ATS Lens",
+          url: "https://ai-resume-analyzer111.lovable.app",
+          description:
+            "AI-powered resume optimizer that scores resumes against job descriptions and rewrites bullets to beat ATS filters.",
+        }),
       },
     ],
   }),
