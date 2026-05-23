@@ -1,0 +1,7 @@
+# ATS Lens
+
+> AI-powered resume optimizer that scores resumes against job descriptions and rewrites bullets to beat ATS filters.
+
+## Pages
+
+- [Home](/): Overview of the AI Resume ATS Analyzer, features, and how it works.
