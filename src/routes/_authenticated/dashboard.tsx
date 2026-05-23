@@ -21,6 +21,24 @@ const STAGES: { key: Stage; label: string }[] = [
 ];
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard — Analyze your resume — ATS Lens" },
+      {
+        name: "description",
+        content:
+          "Upload a resume and a job description to get an ATS match score, missing keywords, and AI-tailored bullet rewrites.",
+      },
+      { property: "og:title", content: "Dashboard — ATS Lens" },
+      {
+        property: "og:description",
+        content: "Run an AI ATS analysis on your resume against any job description.",
+      },
+      { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/dashboard" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://ai-resume-analyzer111.lovable.app/dashboard" }],
+  }),
   component: Dashboard,
 });
 
