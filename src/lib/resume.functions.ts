@@ -60,6 +60,23 @@ const AdvancedMetricsSchema = z.object({
   career_mapping: CareerMappingSchema.default({ target_roles: [], target_companies: [], upskill_advice: "" }),
 });
 
+const BonusAuditSchema = z.object({
+  score: z.number().min(0).max(100).default(0),
+  feedback: z.string().default(""),
+});
+
+const SalaryEstimateSchema = z.object({
+  range: z.string().default(""),
+  reasoning: z.string().default(""),
+});
+
+const BonusFeaturesSchema = z.object({
+  action_verb_audit: BonusAuditSchema.default({ score: 0, feedback: "" }),
+  portfolio_github_impact: BonusAuditSchema.default({ score: 0, feedback: "" }),
+  salary_estimate: SalaryEstimateSchema.default({ range: "", reasoning: "" }),
+  generated_cover_letter: z.string().default(""),
+});
+
 const AnalysisSchema = z.object({
   success: z.boolean().default(true),
   harsh_feedback_summary: z.string(),
@@ -75,7 +92,14 @@ const AnalysisSchema = z.object({
     deep_analysis: { impact_audit: "", red_flags: [] },
     career_mapping: { target_roles: [], target_companies: [], upskill_advice: "" },
   }),
+  bonus_features: BonusFeaturesSchema.default({
+    action_verb_audit: { score: 0, feedback: "" },
+    portfolio_github_impact: { score: 0, feedback: "" },
+    salary_estimate: { range: "", reasoning: "" },
+    generated_cover_letter: "",
+  }),
 });
+
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
