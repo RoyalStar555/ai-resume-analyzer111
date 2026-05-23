@@ -7,6 +7,20 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
+  head: () => ({
+    meta: [
+      { title: "Reset your password — ATS Lens" },
+      {
+        name: "description",
+        content: "Set a new password for your ATS Lens account to keep optimizing your resume with AI.",
+      },
+      { property: "og:title", content: "Reset password — ATS Lens" },
+      { property: "og:description", content: "Set a new password for your ATS Lens account." },
+      { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/reset-password" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://ai-resume-analyzer111.lovable.app/reset-password" }],
+  }),
   component: ResetPasswordPage,
 });
 

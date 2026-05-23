@@ -3,6 +3,40 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Target, FileSearch, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "ATS Lens — AI Resume Optimizer that beats ATS filters" },
+      {
+        name: "description",
+        content:
+          "Upload your resume and a job description to get an instant AI-powered ATS match score, missing keywords, and tailored bullet rewrites.",
+      },
+      { property: "og:title", content: "ATS Lens — Beat the bots. Land the interview." },
+      {
+        property: "og:description",
+        content:
+          "Instant ATS match score, missing keywords, and AI-tailored bullet rewrites for your resume.",
+      },
+      { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://ai-resume-analyzer111.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "ATS Lens",
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          url: "https://ai-resume-analyzer111.lovable.app/",
+          description:
+            "AI Resume ATS Analyzer that scores resumes against job descriptions and generates tailored bullet rewrites.",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        }),
+      },
+    ],
+  }),
   component: Landing,
 });
 
@@ -59,7 +93,7 @@ function Landing() {
               <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
                 <f.icon className="size-5" />
               </div>
-              <h3 className="mt-4 font-display text-lg font-semibold">{f.title}</h3>
+              <h2 className="mt-4 font-display text-lg font-semibold">{f.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{f.body}</p>
             </div>
           ))}

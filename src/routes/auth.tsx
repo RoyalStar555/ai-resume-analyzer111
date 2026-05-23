@@ -8,6 +8,21 @@ import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Sign in or create an account — ATS Lens" },
+      {
+        name: "description",
+        content:
+          "Sign in to ATS Lens or create a free account to analyze your resume against any job description with AI.",
+      },
+      { property: "og:title", content: "Sign in — ATS Lens" },
+      { property: "og:description", content: "Access your AI resume optimizer dashboard." },
+      { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/auth" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://ai-resume-analyzer111.lovable.app/auth" }],
+  }),
   component: AuthPage,
 });
 
