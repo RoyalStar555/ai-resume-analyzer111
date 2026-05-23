@@ -60,6 +60,23 @@ const AdvancedMetricsSchema = z.object({
   career_mapping: CareerMappingSchema.default({ target_roles: [], target_companies: [], upskill_advice: "" }),
 });
 
+const BonusAuditSchema = z.object({
+  score: z.number().min(0).max(100).default(0),
+  feedback: z.string().default(""),
+});
+
+const SalaryEstimateSchema = z.object({
+  range: z.string().default(""),
+  reasoning: z.string().default(""),
+});
+
+const BonusFeaturesSchema = z.object({
+  action_verb_audit: BonusAuditSchema.default({ score: 0, feedback: "" }),
+  portfolio_github_impact: BonusAuditSchema.default({ score: 0, feedback: "" }),
+  salary_estimate: SalaryEstimateSchema.default({ range: "", reasoning: "" }),
+  generated_cover_letter: z.string().default(""),
+});
+
 const AnalysisSchema = z.object({
   success: z.boolean().default(true),
   harsh_feedback_summary: z.string(),
@@ -75,7 +92,14 @@ const AnalysisSchema = z.object({
     deep_analysis: { impact_audit: "", red_flags: [] },
     career_mapping: { target_roles: [], target_companies: [], upskill_advice: "" },
   }),
+  bonus_features: BonusFeaturesSchema.default({
+    action_verb_audit: { score: 0, feedback: "" },
+    portfolio_github_impact: { score: 0, feedback: "" },
+    salary_estimate: { range: "", reasoning: "" },
+    generated_cover_letter: "",
+  }),
 });
+
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
@@ -188,8 +212,24 @@ Use this EXACT merged JSON schema (return BOTH the new advanced_metrics AND the 
     "job_description_skills": ["core technical skills expected in the job description"],
     "missing_skills": ["skills explicit in job description but missing or weak in resume"],
     "bullet_point_improvements": ["2 tailored bullet points rewritten for high impact with quantifiable metrics"]
+  },
+  "bonus_features": {
+    "action_verb_audit": {
+      "score": <int 0-100>,
+      "feedback": "Critique on whether the resume uses strong engineering action verbs (e.g., Architected, Deployed) or weak passive verbs."
+    },
+    "portfolio_github_impact": {
+      "score": <int 0-100>,
+      "feedback": "Critique on how well the candidate highlights their personal projects, hackathons, and repository links."
+    },
+    "salary_estimate": {
+      "range": "e.g., $75,000 - $95,000",
+      "reasoning": "Brief explanation based on matched skills and estimated seniority."
+    },
+    "generated_cover_letter": "A highly professional, 3-paragraph cover letter tailored specifically to the job description, using the candidate's strongest matching skills. Use \\n\\n between paragraphs."
   }
 }
+
 Note: 'chart_data' integers must add up to exactly 100.
 
 Return ONLY the JSON object — no markdown, no code fences, no prose.

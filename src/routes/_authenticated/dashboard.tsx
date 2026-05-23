@@ -633,9 +633,108 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
           ))}
         </ul>
       </div>
+
+      <BonusFeaturesSection bonus={analysis.bonus_features} />
     </div>
   );
 }
+
+function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features"] }) {
+  if (!bonus) return null;
+  const verb = bonus.action_verb_audit;
+  const portfolio = bonus.portfolio_github_impact;
+  const salary = bonus.salary_estimate;
+  const cover = bonus.generated_cover_letter ?? "";
+
+  const copyCover = async () => {
+    try {
+      await navigator.clipboard.writeText(cover);
+      toast.success("Cover letter copied to clipboard");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+
+  return (
+    <div className="space-y-6 pt-2">
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <h3 className="font-display text-xs font-semibold uppercase tracking-[0.25em] text-primary">
+          Premium Tools & Extras
+        </h3>
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <BonusMetricCard
+          title="Action Verb Power"
+          icon={<Activity className="size-4" />}
+          score={verb?.score ?? 0}
+          feedback={verb?.feedback ?? ""}
+        />
+        <BonusMetricCard
+          title="Project & Portfolio Impact"
+          icon={<Sparkles className="size-4" />}
+          score={portfolio?.score ?? 0}
+          feedback={portfolio?.feedback ?? ""}
+        />
+        <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+          <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <TrendingUp className="size-4" /> Estimated Market Salary
+          </h4>
+          <p className="mt-3 bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
+            {salary?.range || "—"}
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-foreground/80">{salary?.reasoning}</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h4 className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <FileText className="size-4" /> AI Generated Cover Letter
+          </h4>
+          <Button size="sm" variant="outline" onClick={copyCover} disabled={!cover}>
+            <Check className="mr-1 size-3.5" /> Copy
+          </Button>
+        </div>
+        <Textarea
+          readOnly
+          value={cover}
+          className="min-h-[260px] resize-y whitespace-pre-wrap bg-input/30 font-mono text-sm leading-relaxed"
+          placeholder="Cover letter will appear here."
+        />
+      </div>
+    </div>
+  );
+}
+
+function BonusMetricCard({
+  title,
+  icon,
+  score,
+  feedback,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  score: number;
+  feedback: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+      <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {icon} {title}
+      </h4>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="font-display text-3xl font-bold text-foreground">{score}</span>
+        <span className="text-xs text-muted-foreground">/ 100</span>
+      </div>
+      <Progress value={score} className="mt-2 h-2" />
+      <p className="mt-3 text-xs leading-relaxed text-foreground/80">{feedback}</p>
+    </div>
+  );
+}
+
 
 function FeedbackList({
   title,
