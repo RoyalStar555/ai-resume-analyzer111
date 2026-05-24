@@ -125,7 +125,7 @@ function Dashboard() {
 
   return (
     <div className="grid min-w-0 gap-8 lg:grid-cols-[1fr_360px]">
-      <div className="space-y-8">
+      <div className="min-w-0 space-y-8">
         <div>
           <h1 className="font-display text-3xl font-semibold">Run an analysis</h1>
           <p className="mt-1 text-sm text-muted-foreground">
