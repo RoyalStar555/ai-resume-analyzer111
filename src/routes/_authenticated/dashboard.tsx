@@ -201,7 +201,11 @@ function Dashboard() {
           </div>
         </form>
 
-        {current && <AnalysisCard result={current} />}
+        {current && (
+          <SectionErrorBoundary label="Analysis results">
+            <AnalysisCard result={current} />
+          </SectionErrorBoundary>
+        )}
       </div>
 
 
