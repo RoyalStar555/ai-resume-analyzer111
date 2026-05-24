@@ -330,48 +330,50 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 
       {/* Section B: Visual breakdown */}
       <div className="grid gap-8 md:grid-cols-2 md:gap-10">
-        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Evaluation breakdown
-          </h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  stroke="var(--background)"
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                  label={({ value }) => `${value}%`}
-                  labelLine={{ stroke: "var(--muted-foreground)", strokeWidth: 1 }}
-                >
-                  {chartData.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                      style={{ fill: CHART_COLORS[i % CHART_COLORS.length] }}
-                    />
-                  ))}
-                </Pie>
-                <RTooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  formatter={(v: number, n: string) => [`${v}%`, n]}
-                />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
+        <SectionErrorBoundary label="Evaluation breakdown">
+          <div className="overflow-hidden rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+            <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Evaluation breakdown
+            </h3>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    stroke="var(--background)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                    label={({ value }) => `${value}%`}
+                    labelLine={{ stroke: "var(--muted-foreground)", strokeWidth: 1 }}
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        style={{ fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                    ))}
+                  </Pie>
+                  <RTooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(v: number, n: string) => [`${v}%`, n]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        </SectionErrorBoundary>
 
         <div className="space-y-4">
           <FeedbackList title="Strong points" items={inner.strong_points} tone="success" icon={<ThumbsUp className="size-4" />} />
