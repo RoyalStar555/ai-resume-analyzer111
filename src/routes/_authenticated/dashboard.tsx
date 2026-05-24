@@ -691,10 +691,10 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
           <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <TrendingUp className="size-4" /> Estimated Market Salary
           </h4>
-          <p className="mt-3 bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
+          <p className="mt-3 break-words bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
             {salary?.range || "—"}
           </p>
-          <p className="mt-3 text-xs leading-relaxed text-foreground/80">{salary?.reasoning}</p>
+          <p className="mt-3 break-words text-xs leading-relaxed text-foreground/80">{salary?.reasoning}</p>
         </div>
       </div>
 
