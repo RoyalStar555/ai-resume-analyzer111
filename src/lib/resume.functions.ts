@@ -103,11 +103,51 @@ const AnalysisSchema = z.object({
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
+// --- Smart keyword normalization ---
+// Treat "React", "React.js", and "ReactJS" as the same skill.
+const SKILL_ALIASES: Record<string, string> = {
+  reactjs: "react",
+  "react.js": "react",
+  nodejs: "node",
+  "node.js": "node",
+  nextjs: "next",
+  "next.js": "next",
+  vuejs: "vue",
+  "vue.js": "vue",
+  expressjs: "express",
+  "express.js": "express",
+  ts: "typescript",
+  js: "javascript",
+  postgres: "postgresql",
+  k8s: "kubernetes",
+  gcp: "googlecloud",
+  "google cloud": "googlecloud",
+  "ci/cd": "cicd",
+  ci: "cicd",
+  golang: "go",
+  "c#": "csharp",
+  "c++": "cpp",
+};
+
+function canonicalize(token: string): string {
+  const lower = token.toLowerCase();
+  if (SKILL_ALIASES[lower]) return SKILL_ALIASES[lower];
+  const stripped = lower.replace(/[\s_\-]+/g, "");
+  if (SKILL_ALIASES[stripped]) return SKILL_ALIASES[stripped];
+  // Strip trailing .js / js suffix variants ("reactjs" -> "react")
+  const suffixStripped = stripped.replace(/(?:\.?js|\.?ts)$/i, "");
+  if (suffixStripped && SKILL_ALIASES[suffixStripped]) return SKILL_ALIASES[suffixStripped];
+  return suffixStripped || stripped;
+}
+
 function extractKeywords(text: string): string[] {
   const stop = new Set([
-    "the","and","for","with","you","are","but","not","this","that","from","your","our","will","have","has","was","were","their","they","them","its","into","per","also","any","all","may","can","using","use","used",
+    "the","and","for","with","you","are","but","not","this","that","from","your","our","will","have","has","was","were","their","they","them","its","into","per","also","any","all","may","can","using","use","used","work","working","team","teams","role","roles","year","years",
   ]);
-  return (text.toLowerCase().match(/\b[a-z][a-z+#.]{2,}\b/g) || []).filter((w) => !stop.has(w));
+  const raw = text.toLowerCase().match(/\b[a-z][a-z0-9+#./]{1,30}\b/g) || [];
+  return raw
+    .map(canonicalize)
+    .filter((w) => w.length >= 2 && !stop.has(w));
 }
 
 function computeAtsScore(jd: string, resume: string): number {
@@ -119,15 +159,20 @@ function computeAtsScore(jd: string, resume: string): number {
 }
 
 function extractJson(text: string): unknown {
-  let s = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  if (!text || typeof text !== "string") throw new Error("AI returned empty response.");
+  let s = text.replace(/```(?:json|javascript|js)?\s*/gi, "").replace(/```/g, "").trim();
   const start = s.search(/[\{\[]/);
   const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
-  if (start === -1 || end === -1) throw new Error("AI returned no JSON.");
+  if (start === -1 || end === -1 || end < start) throw new Error("AI returned no JSON.");
   s = s.slice(start, end + 1);
   try {
     return JSON.parse(s);
   } catch {
-    s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+    s = s
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/[\x00-\x1F\x7F]/g, " ");
     return JSON.parse(s);
   }
 }
