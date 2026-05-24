@@ -698,7 +698,7 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+      <div className="glass rounded-2xl p-6 shadow-card">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h4 className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <FileText className="size-4" /> AI Generated Cover Letter
