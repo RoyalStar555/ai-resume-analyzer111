@@ -442,8 +442,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             </div>
           )}
         </div>
+        </SectionErrorBoundary>
       )}
-      </SectionErrorBoundary>
 
       {/* Deep analysis: Impact audit + Red flags */}
       {(analysis.advanced_metrics?.deep_analysis?.impact_audit ||
