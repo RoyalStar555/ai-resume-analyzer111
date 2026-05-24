@@ -200,9 +200,16 @@ export const analyzeResume = createServerFn({ method: "POST" })
 
     let analysis: ResumeAnalysis;
     try {
-      const { text } = await generateText({
-        model,
-        prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
+      // 60s timeout safety net so a stuck AI call doesn't hang the request
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), 60_000);
+
+      let text: string;
+      try {
+        const result = await generateText({
+          model,
+          abortSignal: timeoutController.signal,
+          prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
 
 Use this EXACT merged JSON schema (return BOTH the new advanced_metrics AND the legacy analysis fields):
 {
@@ -284,8 +291,36 @@ ${data.jobDescription}
 
 RESUME:
 ${data.resumeText}`,
-      });
-      analysis = AnalysisSchema.parse(extractJson(text));
+        });
+        text = result.text;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Robust parse: prefer safeParse so missing fields fall back to Zod defaults
+      const raw = extractJson(text);
+      const parsed = AnalysisSchema.safeParse(raw);
+      if (parsed.success) {
+        analysis = parsed.data;
+      } else {
+        console.warn("AI response failed strict schema, applying defaults:", parsed.error.issues);
+        // Merge with defaults: re-parse via the schema using only valid pieces
+        analysis = AnalysisSchema.parse({
+          ...(typeof raw === "object" && raw !== null ? raw : {}),
+          harsh_feedback_summary:
+            (raw as any)?.harsh_feedback_summary ??
+            "Analysis returned partial data — some fields used safe defaults.",
+          chart_data:
+            Array.isArray((raw as any)?.chart_data) && (raw as any).chart_data.length
+              ? (raw as any).chart_data
+              : [
+                  { name: "Strong Points", value: 33 },
+                  { name: "Weak Points", value: 34 },
+                  { name: "Actionable Suggestions", value: 33 },
+                ],
+          analysis: (raw as any)?.analysis ?? {},
+        });
+      }
 
       // Normalize chart_data to sum to 100
       const sum = analysis.chart_data.reduce((a, b) => a + (b.value || 0), 0);
@@ -299,9 +334,13 @@ ${data.resumeText}`,
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
       if (status === 402) throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
+      if (err?.name === "AbortError" || /abort/i.test(err?.message ?? "")) {
+        throw new Error("The AI took too long to respond. Please try again.");
+      }
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
     }
+
 
     const { data: saved, error } = await supabase
       .from("resumes")
