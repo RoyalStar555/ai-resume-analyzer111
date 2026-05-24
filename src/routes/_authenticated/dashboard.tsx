@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap, ShieldAlert, Activity } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { toast } from "sonner";
+import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
 const STAGES: { key: Stage; label: string }[] = [
@@ -123,8 +124,8 @@ function Dashboard() {
   const running = stage !== null;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-      <div className="space-y-8">
+    <div className="grid min-w-0 gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="min-w-0 space-y-8">
         <div>
           <h1 className="font-display text-3xl font-semibold">Run an analysis</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -200,7 +201,11 @@ function Dashboard() {
           </div>
         </form>
 
-        {current && <AnalysisCard result={current} />}
+        {current && (
+          <SectionErrorBoundary label="Analysis results">
+            <AnalysisCard result={current} />
+          </SectionErrorBoundary>
+        )}
       </div>
 
 
@@ -325,48 +330,50 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 
       {/* Section B: Visual breakdown */}
       <div className="grid gap-8 md:grid-cols-2 md:gap-10">
-        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Evaluation breakdown
-          </h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  stroke="var(--background)"
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                  label={({ value }) => `${value}%`}
-                  labelLine={{ stroke: "var(--muted-foreground)", strokeWidth: 1 }}
-                >
-                  {chartData.map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                      style={{ fill: CHART_COLORS[i % CHART_COLORS.length] }}
-                    />
-                  ))}
-                </Pie>
-                <RTooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  formatter={(v: number, n: string) => [`${v}%`, n]}
-                />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
+        <SectionErrorBoundary label="Evaluation breakdown">
+          <div className="overflow-hidden rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+            <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Evaluation breakdown
+            </h3>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    stroke="var(--background)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                    label={({ value }) => `${value}%`}
+                    labelLine={{ stroke: "var(--muted-foreground)", strokeWidth: 1 }}
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                        style={{ fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                    ))}
+                  </Pie>
+                  <RTooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(v: number, n: string) => [`${v}%`, n]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        </SectionErrorBoundary>
 
         <div className="space-y-4">
           <FeedbackList title="Strong points" items={inner.strong_points} tone="success" icon={<ThumbsUp className="size-4" />} />
@@ -379,6 +386,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {(analysis.advanced_metrics?.radar_competency?.length ?? 0) +
         (analysis.advanced_metrics?.market_alignment?.length ?? 0) >
         0 && (
+        <SectionErrorBoundary label="Competency & market charts">
         <div className="grid gap-6 md:grid-cols-2">
           {(analysis.advanced_metrics?.radar_competency?.length ?? 0) > 0 && (
             <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
@@ -434,6 +442,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             </div>
           )}
         </div>
+        </SectionErrorBoundary>
       )}
 
       {/* Deep analysis: Impact audit + Red flags */}
@@ -678,18 +687,18 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
           score={portfolio?.score ?? 0}
           feedback={portfolio?.feedback ?? ""}
         />
-        <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+        <div className="glass rounded-2xl p-6 shadow-card">
           <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <TrendingUp className="size-4" /> Estimated Market Salary
           </h4>
-          <p className="mt-3 bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
+          <p className="mt-3 break-words bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
             {salary?.range || "—"}
           </p>
-          <p className="mt-3 text-xs leading-relaxed text-foreground/80">{salary?.reasoning}</p>
+          <p className="mt-3 break-words text-xs leading-relaxed text-foreground/80">{salary?.reasoning}</p>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+      <div className="glass rounded-2xl p-6 shadow-card">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h4 className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <FileText className="size-4" /> AI Generated Cover Letter
@@ -721,7 +730,7 @@ function BonusMetricCard({
   feedback: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card/40 p-5 shadow-lg backdrop-blur-md">
+    <div className="glass rounded-2xl p-6 shadow-card">
       <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {icon} {title}
       </h4>

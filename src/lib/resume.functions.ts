@@ -103,11 +103,51 @@ const AnalysisSchema = z.object({
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
+// --- Smart keyword normalization ---
+// Treat "React", "React.js", and "ReactJS" as the same skill.
+const SKILL_ALIASES: Record<string, string> = {
+  reactjs: "react",
+  "react.js": "react",
+  nodejs: "node",
+  "node.js": "node",
+  nextjs: "next",
+  "next.js": "next",
+  vuejs: "vue",
+  "vue.js": "vue",
+  expressjs: "express",
+  "express.js": "express",
+  ts: "typescript",
+  js: "javascript",
+  postgres: "postgresql",
+  k8s: "kubernetes",
+  gcp: "googlecloud",
+  "google cloud": "googlecloud",
+  "ci/cd": "cicd",
+  ci: "cicd",
+  golang: "go",
+  "c#": "csharp",
+  "c++": "cpp",
+};
+
+function canonicalize(token: string): string {
+  const lower = token.toLowerCase();
+  if (SKILL_ALIASES[lower]) return SKILL_ALIASES[lower];
+  const stripped = lower.replace(/[\s_\-]+/g, "");
+  if (SKILL_ALIASES[stripped]) return SKILL_ALIASES[stripped];
+  // Strip trailing .js / js suffix variants ("reactjs" -> "react")
+  const suffixStripped = stripped.replace(/(?:\.?js|\.?ts)$/i, "");
+  if (suffixStripped && SKILL_ALIASES[suffixStripped]) return SKILL_ALIASES[suffixStripped];
+  return suffixStripped || stripped;
+}
+
 function extractKeywords(text: string): string[] {
   const stop = new Set([
-    "the","and","for","with","you","are","but","not","this","that","from","your","our","will","have","has","was","were","their","they","them","its","into","per","also","any","all","may","can","using","use","used",
+    "the","and","for","with","you","are","but","not","this","that","from","your","our","will","have","has","was","were","their","they","them","its","into","per","also","any","all","may","can","using","use","used","work","working","team","teams","role","roles","year","years",
   ]);
-  return (text.toLowerCase().match(/\b[a-z][a-z+#.]{2,}\b/g) || []).filter((w) => !stop.has(w));
+  const raw = text.toLowerCase().match(/\b[a-z][a-z0-9+#./]{1,30}\b/g) || [];
+  return raw
+    .map(canonicalize)
+    .filter((w) => w.length >= 2 && !stop.has(w));
 }
 
 function computeAtsScore(jd: string, resume: string): number {
@@ -119,15 +159,20 @@ function computeAtsScore(jd: string, resume: string): number {
 }
 
 function extractJson(text: string): unknown {
-  let s = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  if (!text || typeof text !== "string") throw new Error("AI returned empty response.");
+  let s = text.replace(/```(?:json|javascript|js)?\s*/gi, "").replace(/```/g, "").trim();
   const start = s.search(/[\{\[]/);
   const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
-  if (start === -1 || end === -1) throw new Error("AI returned no JSON.");
+  if (start === -1 || end === -1 || end < start) throw new Error("AI returned no JSON.");
   s = s.slice(start, end + 1);
   try {
     return JSON.parse(s);
   } catch {
-    s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+    s = s
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/[\x00-\x1F\x7F]/g, " ");
     return JSON.parse(s);
   }
 }
@@ -155,9 +200,16 @@ export const analyzeResume = createServerFn({ method: "POST" })
 
     let analysis: ResumeAnalysis;
     try {
-      const { text } = await generateText({
-        model,
-        prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
+      // 60s timeout safety net so a stuck AI call doesn't hang the request
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), 60_000);
+
+      let text: string;
+      try {
+        const result = await generateText({
+          model,
+          abortSignal: timeoutController.signal,
+          prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
 
 Use this EXACT merged JSON schema (return BOTH the new advanced_metrics AND the legacy analysis fields):
 {
@@ -239,8 +291,36 @@ ${data.jobDescription}
 
 RESUME:
 ${data.resumeText}`,
-      });
-      analysis = AnalysisSchema.parse(extractJson(text));
+        });
+        text = result.text;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Robust parse: prefer safeParse so missing fields fall back to Zod defaults
+      const raw = extractJson(text);
+      const parsed = AnalysisSchema.safeParse(raw);
+      if (parsed.success) {
+        analysis = parsed.data;
+      } else {
+        console.warn("AI response failed strict schema, applying defaults:", parsed.error.issues);
+        // Merge with defaults: re-parse via the schema using only valid pieces
+        analysis = AnalysisSchema.parse({
+          ...(typeof raw === "object" && raw !== null ? raw : {}),
+          harsh_feedback_summary:
+            (raw as any)?.harsh_feedback_summary ??
+            "Analysis returned partial data — some fields used safe defaults.",
+          chart_data:
+            Array.isArray((raw as any)?.chart_data) && (raw as any).chart_data.length
+              ? (raw as any).chart_data
+              : [
+                  { name: "Strong Points", value: 33 },
+                  { name: "Weak Points", value: 34 },
+                  { name: "Actionable Suggestions", value: 33 },
+                ],
+          analysis: (raw as any)?.analysis ?? {},
+        });
+      }
 
       // Normalize chart_data to sum to 100
       const sum = analysis.chart_data.reduce((a, b) => a + (b.value || 0), 0);
@@ -254,9 +334,13 @@ ${data.resumeText}`,
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
       if (status === 402) throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
+      if (err?.name === "AbortError" || /abort/i.test(err?.message ?? "")) {
+        throw new Error("The AI took too long to respond. Please try again.");
+      }
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
     }
+
 
     const { data: saved, error } = await supabase
       .from("resumes")
