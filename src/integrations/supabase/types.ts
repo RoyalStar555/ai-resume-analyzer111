@@ -14,36 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      resume_ab_tests: {
+        Row: {
+          created_at: string
+          id: string
+          job_description: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_description: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_description?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       resumes: {
         Row: {
+          ab_test_id: string | null
           analysis: Json
           ats_score: number
           created_at: string
           filename: string | null
+          formatting_metrics: Json | null
           id: string
           job_description: string
+          keyword_density: Json | null
+          percentile: number | null
+          percentile_benchmark_year: number | null
           resume_text: string
+          role_slug: string | null
           user_id: string
+          variant_label: string | null
         }
         Insert: {
+          ab_test_id?: string | null
           analysis: Json
           ats_score: number
           created_at?: string
           filename?: string | null
+          formatting_metrics?: Json | null
           id?: string
           job_description: string
+          keyword_density?: Json | null
+          percentile?: number | null
+          percentile_benchmark_year?: number | null
           resume_text: string
+          role_slug?: string | null
           user_id: string
+          variant_label?: string | null
         }
         Update: {
+          ab_test_id?: string | null
           analysis?: Json
           ats_score?: number
           created_at?: string
           filename?: string | null
+          formatting_metrics?: Json | null
           id?: string
           job_description?: string
+          keyword_density?: Json | null
+          percentile?: number | null
+          percentile_benchmark_year?: number | null
           resume_text?: string
+          role_slug?: string | null
           user_id?: string
+          variant_label?: string | null
+        }
+        Relationships: []
+      }
+      role_market_benchmarks: {
+        Row: {
+          benchmark_year: number
+          created_at: string
+          id: string
+          percentile_cut_points: Json
+          role_label: string
+          role_slug: string
+          sample_size: number | null
+          source: string | null
+        }
+        Insert: {
+          benchmark_year: number
+          created_at?: string
+          id?: string
+          percentile_cut_points: Json
+          role_label: string
+          role_slug: string
+          sample_size?: number | null
+          source?: string | null
+        }
+        Update: {
+          benchmark_year?: number
+          created_at?: string
+          id?: string
+          percentile_cut_points?: Json
+          role_label?: string
+          role_slug?: string
+          sample_size?: number | null
+          source?: string | null
         }
         Relationships: []
       }
