@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { extractTextFromPdf } from "@/lib/pdf-parser";
-import { analyzeResume, listResumes, deleteResume, type ResumeAnalysis } from "@/lib/resume.functions";
+import { EmptyPdfTextError, extractTextFromPdf } from "@/lib/pdf-parser";
+import { analyzeResume, createResumeAbTest, listResumes, deleteResume, type ResumeAnalysis, type ResumeAnalysisResult } from "@/lib/resume.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,11 @@ import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle,
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { toast } from "sonner";
 import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
+import { BentoArea, BentoGrid } from "@/components/dashboard/BentoGrid";
+import { AbComparisonView } from "@/components/dashboard/AbComparisonView";
+import { AbTestInput } from "@/components/dashboard/AbTestInput";
+import { PercentileBellCurve } from "@/components/dashboard/PercentileBellCurve";
+import { SkillFlashcardDeck } from "@/components/dashboard/SkillFlashcardDeck";
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
 const STAGES: { key: Stage; label: string }[] = [
@@ -43,10 +48,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-type AnalysisResult = { id: string; score: number; analysis: ResumeAnalysis; createdAt: string };
+type AnalysisResult = ResumeAnalysisResult;
 
 function Dashboard() {
   const analyzeFn = useServerFn(analyzeResume);
+  const createAbTestFn = useServerFn(createResumeAbTest);
   const listFn = useServerFn(listResumes);
   const deleteFn = useServerFn(deleteResume);
   const qc = useQueryClient();
@@ -55,6 +61,8 @@ function Dashboard() {
   const [jd, setJd] = useState("");
   const [stage, setStage] = useState<Stage | null>(null);
   const [current, setCurrent] = useState<AnalysisResult | null>(null);
+  const [secondaryFile, setSecondaryFile] = useState<File | null>(null);
+  const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const history = useQuery({ queryKey: ["resumes"], queryFn: () => listFn() });
@@ -71,7 +79,7 @@ function Dashboard() {
       };
 
       setStage("parsing");
-      const resumeText = await extractTextFromPdf(file);
+      const resumeText = await readResumeText(file, controller.signal);
       throwIfAborted();
       if (resumeText.length < 50) throw new Error("Couldn't extract text from this PDF.");
 
@@ -109,6 +117,43 @@ function Dashboard() {
     },
   });
 
+  const compare = useMutation({
+    mutationFn: async () => {
+      if (!file || !secondaryFile) throw new Error("Choose two PDF resumes to compare.");
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setStage("parsing");
+      const [resumeTextA, resumeTextB] = await Promise.all([
+        readResumeText(file, controller.signal),
+        readResumeText(secondaryFile, controller.signal),
+      ]);
+      if (controller.signal.aborted) throw new DOMException("Canceled", "AbortError");
+      setStage("scoring");
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      setStage("analyzing");
+      const test = await createAbTestFn({ data: { jobDescription: jd } });
+      const variantA = await analyzeFn({ data: { resumeText: resumeTextA, jobDescription: jd, filename: file.name, abTestId: test.id, variantLabel: "A" }, signal: controller.signal });
+      const variantB = await analyzeFn({ data: { resumeText: resumeTextB, jobDescription: jd, filename: secondaryFile.name, abTestId: test.id, variantLabel: "B" }, signal: controller.signal });
+      setStage("saving");
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      return [variantA, variantB] as [AnalysisResult, AnalysisResult];
+    },
+    onSuccess: (variants) => {
+      setAbVariants(variants);
+      setCurrent(variants[0]);
+      setStage(null);
+      abortRef.current = null;
+      qc.invalidateQueries({ queryKey: ["resumes"] });
+      toast.success("A/B comparison complete");
+    },
+    onError: (error: Error) => {
+      setStage(null);
+      abortRef.current = null;
+      if (error.name === "AbortError") return toast("Comparison canceled");
+      toast.error(error.message ?? "Comparison failed");
+    },
+  });
+
   const cancel = () => {
     abortRef.current?.abort();
   };
@@ -124,7 +169,8 @@ function Dashboard() {
   const running = stage !== null;
 
   return (
-    <div className="grid min-w-0 gap-8 lg:grid-cols-[1fr_360px]">
+    <BentoGrid>
+      <BentoArea area="input">
       <div className="min-w-0 space-y-8">
         <div>
           <h1 className="font-display text-3xl font-semibold">Run an analysis</h1>
@@ -174,7 +220,7 @@ function Dashboard() {
             </label>
           </div>
 
-          {running && <StageTracker active={stage!} />}
+          {running && stage ? <StageTracker active={stage} /> : null}
 
           <div className="flex gap-3">
             {running ? (
@@ -201,15 +247,25 @@ function Dashboard() {
           </div>
         </form>
 
+        <AbTestInput
+          primaryFile={file}
+          secondaryFile={secondaryFile}
+          onSecondaryFileChange={setSecondaryFile}
+          onCompare={() => compare.mutate()}
+          disabled={running || compare.isPending}
+        />
+
+        {abVariants && <AbComparisonView variants={abVariants} />}
+
         {current && (
           <SectionErrorBoundary label="Analysis results">
             <AnalysisCard result={current} />
           </SectionErrorBoundary>
         )}
       </div>
+      </BentoArea>
 
-
-      <aside className="space-y-4">
+      <BentoArea area="history"><aside className="space-y-4">
         <h2 className="font-display text-lg font-semibold">Recent analyses</h2>
         {history.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {history.data?.length === 0 && (
@@ -263,9 +319,21 @@ function Dashboard() {
             </li>
           ))}
         </ul>
-      </aside>
-    </div>
+      </aside></BentoArea>
+    </BentoGrid>
   );
+}
+
+async function readResumeText(file: File, signal: AbortSignal): Promise<string> {
+  try {
+    return await extractTextFromPdf(file);
+  } catch (error) {
+    if (!(error instanceof EmptyPdfTextError)) throw error;
+    const { extractTextWithOcr } = await import("@/lib/ocr-parser");
+    const text = await extractTextWithOcr(file, undefined, signal);
+    if (text.length < 30) throw new EmptyPdfTextError();
+    return text;
+  }
 }
 
 function AnalysisCard({ result }: { result: AnalysisResult }) {
@@ -273,7 +341,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
   const inner = analysis.analysis;
   const tone = score >= 70 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--destructive)";
 
-  const CHART_COLORS = ["#06b6d4", "#f43f5e", "#8b5cf6"];
+  const chartColors = useThemeChartColors();
   const chartData = (analysis.chart_data ?? []).filter((d) => d.value > 0);
   const aspects = analysis.aspect_scores ?? [];
   const rwc = analysis.real_world_connect ?? { target_roles: [], target_companies: [], market_upskill_advice: "" };
@@ -354,8 +422,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                     {chartData.map((_, i) => (
                       <Cell
                         key={i}
-                        fill={CHART_COLORS[i % CHART_COLORS.length]}
-                        style={{ fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                        fill={chartColors[i % chartColors.length]}
+                        style={{ fill: chartColors[i % chartColors.length] }}
                       />
                     ))}
                   </Pie>
@@ -399,7 +467,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                     <PolarGrid stroke="hsl(var(--border))" />
                     <PolarAngleAxis dataKey="domain" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                    <Radar name="Score" dataKey="score" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.45} />
+                    <Radar name="Score" dataKey="score" stroke={chartColors[2]} fill={chartColors[2]} fillOpacity={0.45} />
                     <RTooltip
                       contentStyle={{
                         background: "hsl(var(--popover))",
@@ -434,8 +502,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                       }}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="candidate" name="Candidate" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="market" name="Market 2026" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="candidate" name="Candidate" fill={chartColors[0]} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="market" name="Market 2026" fill={chartColors[1]} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -508,7 +576,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                     <PolarGrid stroke="hsl(var(--border))" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                    <Radar name="Score" dataKey="score" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.45} />
+                    <Radar name="Score" dataKey="score" stroke={chartColors[0]} fill={chartColors[0]} fillOpacity={0.45} />
                     <RTooltip
                       contentStyle={{
                         background: "hsl(var(--popover))",
@@ -569,6 +637,11 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
           </div>
         </div>
       )}
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <PercentileBellCurve />
+        <SkillFlashcardDeck skills={inner.missing_skills} />
+      </div>
 
       {/* Career mapping (from advanced_metrics) */}
       {(() => {
@@ -646,6 +719,19 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       <BonusFeaturesSection bonus={analysis.bonus_features} />
     </div>
   );
+}
+
+function useThemeChartColors() {
+  const [colors, setColors] = useState(["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"]);
+  useEffect(() => {
+    const styles = getComputedStyle(document.documentElement);
+    setColors([
+      styles.getPropertyValue("--chart-1").trim() || "var(--chart-1)",
+      styles.getPropertyValue("--chart-2").trim() || "var(--chart-2)",
+      styles.getPropertyValue("--chart-3").trim() || "var(--chart-3)",
+    ]);
+  }, []);
+  return colors;
 }
 
 function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features"] }) {

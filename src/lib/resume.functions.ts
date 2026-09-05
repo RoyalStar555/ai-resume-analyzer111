@@ -103,6 +103,13 @@ const AnalysisSchema = z.object({
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
+export type ResumeAnalysisResult = {
+  id: string;
+  score: number;
+  analysis: ResumeAnalysis;
+  createdAt: string;
+};
+
 // --- Smart keyword normalization ---
 // Treat "React", "React.js", and "ReactJS" as the same skill.
 const SKILL_ALIASES: Record<string, string> = {
@@ -179,12 +186,20 @@ function extractJson(text: string): unknown {
 
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { resumeText: string; jobDescription: string; filename?: string }) =>
+  .inputValidator((input: {
+    resumeText: string;
+    jobDescription: string;
+    filename?: string;
+    abTestId?: string;
+    variantLabel?: "A" | "B";
+  }) =>
     z
       .object({
         resumeText: z.string().min(20).max(50_000),
         jobDescription: z.string().min(20).max(20_000),
         filename: z.string().max(255).optional(),
+        abTestId: z.string().uuid().optional(),
+        variantLabel: z.enum(["A", "B"]).optional(),
       })
       .parse(input),
   )
@@ -351,6 +366,14 @@ ${data.resumeText}`,
         ats_score: score,
         analysis: analysis as any,
         filename: data.filename ?? null,
+        ab_test_id: data.abTestId ?? null,
+        variant_label: data.variantLabel ?? null,
+        formatting_metrics: {
+          word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
+          bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
+          heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? []).length,
+          link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
+        },
       })
       .select("id, created_at")
       .single();
@@ -361,6 +384,21 @@ ${data.resumeText}`,
     }
 
     return { id: saved.id, score, analysis, createdAt: saved.created_at };
+  });
+
+export const createResumeAbTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { jobDescription: string }) =>
+    z.object({ jobDescription: z.string().min(20).max(20_000) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: test, error } = await context.supabase
+      .from("resume_ab_tests")
+      .insert({ user_id: context.userId, job_description: data.jobDescription })
+      .select("id")
+      .single();
+    if (error) throw new Error("Could not start the A/B test.");
+    return { id: test.id };
   });
 
 export const listResumes = createServerFn({ method: "GET" })
