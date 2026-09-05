@@ -21,7 +21,7 @@ export async function extractTextWithOcr(
       canvas.height = viewport.height;
       const context = canvas.getContext("2d");
       if (!context) continue;
-      await page.render({ canvasContext: context, viewport }).promise;
+      await page.render({ canvas, canvasContext: context, viewport }).promise;
       const result = await worker.recognize(canvas);
       text += `${result.data.text}\n`;
       onProgress?.(Math.round((pageNumber / pageCount) * 100));
