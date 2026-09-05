@@ -66,11 +66,38 @@
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.06);
   --ring: oklch(0.78 0.17 165);
+  --chart-1: oklch(0.78 0.17 165);
+  --chart-2: oklch(0.65 0.22 25);
+  --chart-3: oklch(0.68 0.2 300);
 }
 
 .dark {
   --background: oklch(0.16 0.02 240);
   --foreground: oklch(0.97 0.005 240);
+}
+
+[data-theme="cyberpunk"] {
+  --primary: oklch(0.82 0.2 190);
+  --primary-foreground: oklch(0.14 0.03 240);
+  --accent: oklch(0.74 0.22 315);
+  --accent-foreground: oklch(0.14 0.03 240);
+  --ring: oklch(0.82 0.2 190);
+  --chart-1: oklch(0.82 0.2 190);
+  --chart-2: oklch(0.7 0.22 25);
+  --chart-3: oklch(0.74 0.22 315);
+}
+
+[data-theme="monochrome"] {
+  --primary: oklch(0.82 0 0);
+  --primary-foreground: oklch(0.15 0 0);
+  --accent: oklch(0.68 0 0);
+  --accent-foreground: oklch(0.12 0 0);
+  --success: oklch(0.78 0 0);
+  --warning: oklch(0.62 0 0);
+  --ring: oklch(0.82 0 0);
+  --chart-1: oklch(0.85 0 0);
+  --chart-2: oklch(0.6 0 0);
+  --chart-3: oklch(0.38 0 0);
 }
 
 @layer base {
@@ -112,5 +139,39 @@
     background-color: oklch(1 0 0 / 0.03);
     backdrop-filter: blur(12px);
     border: 1px solid oklch(1 0 0 / 0.06);
+  }
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas:
+      "input input input input score score verdict verdict history history history history"
+      "report report report report report report report report history history history history";
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .bento-area-input { grid-area: input; }
+  .bento-area-report { grid-area: report; }
+  .bento-area-history { grid-area: history; }
+}
+
+@media (max-width: 1023px) {
+  .bento-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      "input input input input input input"
+      "history history history history history history"
+      "report report report report report report";
+  }
+}
+
+@media (max-width: 767px) {
+  .bento-grid {
+    display: block;
+  }
+
+  .bento-area + .bento-area {
+    margin-top: 2rem;
   }
 }
