@@ -3,13 +3,57 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { EmptyPdfTextError, extractTextFromPdf } from "@/lib/pdf-parser";
-import { analyzeResume, createResumeAbTest, listResumes, deleteResume, type ResumeAnalysis, type ResumeAnalysisResult } from "@/lib/resume.functions";
+import {
+  analyzeResume,
+  createResumeAbTest,
+  listResumes,
+  deleteResume,
+  type ResumeAnalysis,
+  type ResumeAnalysisResult,
+} from "@/lib/resume.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Trash2, Loader2, Target, Sparkles, Check, StopCircle, AlertTriangle, ThumbsUp, ThumbsDown, Lightbulb, Download, Share2, TrendingUp, Building2, GraduationCap, ShieldAlert, Activity } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  Upload,
+  FileText,
+  Trash2,
+  Loader2,
+  Target,
+  Sparkles,
+  Check,
+  StopCircle,
+  AlertTriangle,
+  ThumbsUp,
+  ThumbsDown,
+  Lightbulb,
+  Download,
+  Share2,
+  TrendingUp,
+  Building2,
+  GraduationCap,
+  ShieldAlert,
+  Activity,
+} from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 import { toast } from "sonner";
 import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 import { BentoArea, BentoGrid } from "@/components/dashboard/BentoGrid";
@@ -48,7 +92,10 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-type AnalysisResult = ResumeAnalysisResult;
+type AnalysisResult = ResumeAnalysisResult & {
+  percentile?: number | null;
+  percentileBenchmarkYear?: number | null;
+};
 
 function Dashboard() {
   const analyzeFn = useServerFn(analyzeResume);
@@ -132,8 +179,26 @@ function Dashboard() {
       await new Promise((resolve) => setTimeout(resolve, 250));
       setStage("analyzing");
       const test = await createAbTestFn({ data: { jobDescription: jd } });
-      const variantA = await analyzeFn({ data: { resumeText: resumeTextA, jobDescription: jd, filename: file.name, abTestId: test.id, variantLabel: "A" }, signal: controller.signal });
-      const variantB = await analyzeFn({ data: { resumeText: resumeTextB, jobDescription: jd, filename: secondaryFile.name, abTestId: test.id, variantLabel: "B" }, signal: controller.signal });
+      const variantA = await analyzeFn({
+        data: {
+          resumeText: resumeTextA,
+          jobDescription: jd,
+          filename: file.name,
+          abTestId: test.id,
+          variantLabel: "A",
+        },
+        signal: controller.signal,
+      });
+      const variantB = await analyzeFn({
+        data: {
+          resumeText: resumeTextB,
+          jobDescription: jd,
+          filename: secondaryFile.name,
+          abTestId: test.id,
+          variantLabel: "B",
+        },
+        signal: controller.signal,
+      });
       setStage("saving");
       await new Promise((resolve) => setTimeout(resolve, 150));
       return [variantA, variantB] as [AnalysisResult, AnalysisResult];
@@ -171,90 +236,93 @@ function Dashboard() {
   return (
     <BentoGrid>
       <BentoArea area="input">
-      <div className="min-w-0 space-y-8">
-        <div>
-          <h1 className="font-display text-3xl font-semibold">Run an analysis</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Paste the target job description and upload your resume PDF.
-          </p>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            analyze.mutate();
-          }}
-          className="glass space-y-5 rounded-2xl p-6 shadow-card"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="jd">Job description</Label>
-            <Textarea
-              id="jd"
-              rows={8}
-              placeholder="Paste the full job description here…"
-              value={jd}
-              onChange={(e) => setJd(e.target.value)}
-              required
-            />
+        <div className="min-w-0 space-y-8">
+          <div>
+            <h1 className="font-display text-3xl font-semibold">Run an analysis</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Paste the target job description and upload your resume PDF.
+            </p>
           </div>
 
-          <div className="space-y-2">
-            <Label>Resume (PDF)</Label>
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-input/40 px-4 py-6 transition hover:border-primary/60">
-              <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Upload className="size-5" />
-              </div>
-              <div className="flex-1 text-sm">
-                {file ? (
-                  <span className="font-medium">{file.name}</span>
-                ) : (
-                  <span className="text-muted-foreground">Click to select a PDF file</span>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              analyze.mutate();
+            }}
+            className="glass space-y-5 rounded-2xl p-6 shadow-card"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="jd">Job description</Label>
+              <Textarea
+                id="jd"
+                rows={8}
+                placeholder="Paste the full job description here…"
+                value={jd}
+                onChange={(e) => setJd(e.target.value)}
+                required
               />
-            </label>
-          </div>
+            </div>
 
-          {running && stage ? <StageTracker active={stage} /> : null}
+            <div className="space-y-2">
+              <Label>Resume (PDF)</Label>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-input/40 px-4 py-6 transition hover:border-primary/60">
+                <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Upload className="size-5" />
+                </div>
+                <div className="flex-1 text-sm">
+                  {file ? (
+                    <span className="font-medium">{file.name}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Click to select a PDF file</span>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
 
-          <div className="flex gap-3">
-            {running ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={cancel}
-                className="w-full"
-              >
-                <StopCircle className="mr-2 size-4" />
-                Cancel analysis
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
-              >
-                <Sparkles className="mr-2 size-4" />
-                Analyze match
-              </Button>
-            )}
-          </div>
-        </form>
+            {running && stage ? <StageTracker active={stage} /> : null}
 
-        <AbTestInput
-          primaryFile={file}
-          secondaryFile={secondaryFile}
-          onSecondaryFileChange={setSecondaryFile}
-          onCompare={() => compare.mutate()}
-          disabled={running || compare.isPending}
-        />
+            <div className="flex gap-3">
+              {running ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={cancel}
+                  className="w-full"
+                >
+                  <StopCircle className="mr-2 size-4" />
+                  Cancel analysis
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                >
+                  <Sparkles className="mr-2 size-4" />
+                  Analyze match
+                </Button>
+              )}
+            </div>
+          </form>
 
+          <AbTestInput
+            primaryFile={file}
+            secondaryFile={secondaryFile}
+            onSecondaryFileChange={setSecondaryFile}
+            onCompare={() => compare.mutate()}
+            disabled={running || compare.isPending}
+          />
+        </div>
+      </BentoArea>
+
+      <BentoArea area="report">
         {abVariants && <AbComparisonView variants={abVariants} />}
 
         {current && (
@@ -262,64 +330,67 @@ function Dashboard() {
             <AnalysisCard result={current} />
           </SectionErrorBoundary>
         )}
-      </div>
       </BentoArea>
 
-      <BentoArea area="history"><aside className="space-y-4">
-        <h2 className="font-display text-lg font-semibold">Recent analyses</h2>
-        {history.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {history.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground">No analyses yet.</p>
-        )}
-        <ul className="space-y-2">
-          {history.data?.map((r) => (
-            <li
-              key={r.id}
-              className="glass flex items-center justify-between gap-3 rounded-xl p-3 shadow-card"
-            >
-              <button
-                className="flex flex-1 items-center gap-3 text-left"
-                onClick={() =>
-                  setCurrent({
-                    id: r.id,
-                    score: r.ats_score,
-                    analysis: r.analysis as unknown as ResumeAnalysis,
-                    createdAt: r.created_at,
-                  })
-                }
+      <BentoArea area="history">
+        <aside className="space-y-4">
+          <h2 className="font-display text-lg font-semibold">Recent analyses</h2>
+          {history.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {history.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">No analyses yet.</p>
+          )}
+          <ul className="space-y-2">
+            {history.data?.map((r) => (
+              <li
+                key={r.id}
+                className="glass flex items-center justify-between gap-3 rounded-xl p-3 shadow-card"
               >
-                <div
-                  className="grid size-10 shrink-0 place-items-center rounded-lg text-sm font-semibold"
-                  style={{
-                    background:
-                      r.ats_score >= 70
-                        ? "color-mix(in oklch, var(--success) 20%, transparent)"
-                        : r.ats_score >= 40
-                          ? "color-mix(in oklch, var(--warning) 20%, transparent)"
-                          : "color-mix(in oklch, var(--destructive) 20%, transparent)",
-                  }}
+                <button
+                  className="flex flex-1 items-center gap-3 text-left"
+                  onClick={() =>
+                    setCurrent({
+                      id: r.id,
+                      score: r.ats_score,
+                      analysis: r.analysis as unknown as ResumeAnalysis,
+                      createdAt: r.created_at,
+                      percentile: r.percentile,
+                      percentileBenchmarkYear: r.percentile_benchmark_year,
+                    })
+                  }
                 >
-                  {r.ats_score}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{r.filename ?? "Resume"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(r.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => del.mutate(r.id)}
-                aria-label="Delete"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </aside></BentoArea>
+                  <div
+                    className="grid size-10 shrink-0 place-items-center rounded-lg text-sm font-semibold"
+                    style={{
+                      background:
+                        r.ats_score >= 70
+                          ? "color-mix(in oklch, var(--success) 20%, transparent)"
+                          : r.ats_score >= 40
+                            ? "color-mix(in oklch, var(--warning) 20%, transparent)"
+                            : "color-mix(in oklch, var(--destructive) 20%, transparent)",
+                    }}
+                  >
+                    {r.ats_score}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{r.filename ?? "Resume"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(r.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => del.mutate(r.id)}
+                  aria-label="Delete"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </BentoArea>
     </BentoGrid>
   );
 }
@@ -339,12 +410,17 @@ async function readResumeText(file: File, signal: AbortSignal): Promise<string> 
 function AnalysisCard({ result }: { result: AnalysisResult }) {
   const { score, analysis } = result;
   const inner = analysis.analysis;
-  const tone = score >= 70 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--destructive)";
+  const tone =
+    score >= 70 ? "var(--success)" : score >= 40 ? "var(--warning)" : "var(--destructive)";
 
   const chartColors = useThemeChartColors();
   const chartData = (analysis.chart_data ?? []).filter((d) => d.value > 0);
   const aspects = analysis.aspect_scores ?? [];
-  const rwc = analysis.real_world_connect ?? { target_roles: [], target_companies: [], market_upskill_advice: "" };
+  const rwc = analysis.real_world_connect ?? {
+    target_roles: [],
+    target_companies: [],
+    market_upskill_advice: "",
+  };
   const interviewProb = Math.max(0, Math.min(100, Math.round(analysis.interview_probability ?? 0)));
 
   const handlePrint = () => window.print();
@@ -390,8 +466,12 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         <div className="flex gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-4">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
           <div>
-            <h3 className="font-display text-sm font-semibold text-destructive">Recruiter's verdict</h3>
-            <p className="mt-1 text-sm leading-relaxed text-foreground/90">{analysis.harsh_feedback_summary}</p>
+            <h3 className="font-display text-sm font-semibold text-destructive">
+              Recruiter's verdict
+            </h3>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/90">
+              {analysis.harsh_feedback_summary}
+            </p>
           </div>
         </div>
       )}
@@ -444,9 +524,24 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         </SectionErrorBoundary>
 
         <div className="space-y-4">
-          <FeedbackList title="Strong points" items={inner.strong_points} tone="success" icon={<ThumbsUp className="size-4" />} />
-          <FeedbackList title="Weak points" items={inner.weak_points} tone="destructive" icon={<ThumbsDown className="size-4" />} />
-          <FeedbackList title="Suggestions" items={inner.suggestions} tone="primary" icon={<Lightbulb className="size-4" />} />
+          <FeedbackList
+            title="Strong points"
+            items={inner.strong_points}
+            tone="success"
+            icon={<ThumbsUp className="size-4" />}
+          />
+          <FeedbackList
+            title="Weak points"
+            items={inner.weak_points}
+            tone="destructive"
+            icon={<ThumbsDown className="size-4" />}
+          />
+          <FeedbackList
+            title="Suggestions"
+            items={inner.suggestions}
+            tone="primary"
+            icon={<Lightbulb className="size-4" />}
+          />
         </div>
       </div>
 
@@ -455,61 +550,93 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         (analysis.advanced_metrics?.market_alignment?.length ?? 0) >
         0 && (
         <SectionErrorBoundary label="Competency & market charts">
-        <div className="grid gap-6 md:grid-cols-2">
-          {(analysis.advanced_metrics?.radar_competency?.length ?? 0) > 0 && (
-            <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-              <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                <Activity className="size-4" /> Competency radar
-              </h3>
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={analysis.advanced_metrics.radar_competency} outerRadius="75%">
-                    <PolarGrid stroke="hsl(var(--border))" />
-                    <PolarAngleAxis dataKey="domain" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                    <Radar name="Score" dataKey="score" stroke={chartColors[2]} fill={chartColors[2]} fillOpacity={0.45} />
-                    <RTooltip
-                      contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
+          <div className="grid gap-6 md:grid-cols-2">
+            {(analysis.advanced_metrics?.radar_competency?.length ?? 0) > 0 && (
+              <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Activity className="size-4" /> Competency radar
+                </h3>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={analysis.advanced_metrics.radar_competency} outerRadius="75%">
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarAngleAxis
+                        dataKey="domain"
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                      />
+                      <PolarRadiusAxis
+                        angle={30}
+                        domain={[0, 100]}
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                      />
+                      <Radar
+                        name="Score"
+                        dataKey="score"
+                        stroke={chartColors[2]}
+                        fill={chartColors[2]}
+                        fillOpacity={0.45}
+                      />
+                      <RTooltip
+                        contentStyle={{
+                          background: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: 8,
+                          fontSize: 12,
+                        }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {(analysis.advanced_metrics?.market_alignment?.length ?? 0) > 0 && (
-            <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-              <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                <TrendingUp className="size-4" /> Market alignment
-              </h3>
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analysis.advanced_metrics.market_alignment} margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
-                    <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
-                    <XAxis dataKey="category" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                    <RTooltip
-                      contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="candidate" name="Candidate" fill={chartColors[0]} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="market" name="Market 2026" fill={chartColors[1]} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+            {(analysis.advanced_metrics?.market_alignment?.length ?? 0) > 0 && (
+              <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <TrendingUp className="size-4" /> Market alignment
+                </h3>
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={analysis.advanced_metrics.market_alignment}
+                      margin={{ top: 8, right: 8, bottom: 8, left: -16 }}
+                    >
+                      <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="category"
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                      />
+                      <YAxis
+                        domain={[0, 100]}
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                      />
+                      <RTooltip
+                        contentStyle={{
+                          background: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: 8,
+                          fontSize: 12,
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar
+                        dataKey="candidate"
+                        name="Candidate"
+                        fill={chartColors[0]}
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="market"
+                        name="Market 2026"
+                        fill={chartColors[1]}
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </SectionErrorBoundary>
       )}
 
@@ -545,7 +672,6 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         </div>
       )}
 
-
       {/* Advanced metrics */}
       {(aspects.length > 0 || interviewProb > 0) && (
         <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
@@ -556,7 +682,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             <div>
               <div className="mb-2 flex items-baseline justify-between">
                 <span className="text-sm text-muted-foreground">Interview prediction</span>
-                <span className="font-display text-2xl font-bold text-primary">{interviewProb}%</span>
+                <span className="font-display text-2xl font-bold text-primary">
+                  {interviewProb}%
+                </span>
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-input">
                 <div
@@ -574,9 +702,22 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={aspects} outerRadius="75%">
                     <PolarGrid stroke="hsl(var(--border))" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                    <Radar name="Score" dataKey="score" stroke={chartColors[0]} fill={chartColors[0]} fillOpacity={0.45} />
+                    <PolarAngleAxis
+                      dataKey="subject"
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    />
+                    <PolarRadiusAxis
+                      angle={30}
+                      domain={[0, 100]}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                    />
+                    <Radar
+                      name="Score"
+                      dataKey="score"
+                      stroke={chartColors[0]}
+                      fill={chartColors[0]}
+                      fillOpacity={0.45}
+                    />
                     <RTooltip
                       contentStyle={{
                         background: "hsl(var(--popover))",
@@ -594,7 +735,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       )}
 
       {/* Career mapping */}
-      {(rwc.target_roles.length > 0 || rwc.target_companies.length > 0 || rwc.market_upskill_advice) && (
+      {(rwc.target_roles.length > 0 ||
+        rwc.target_companies.length > 0 ||
+        rwc.market_upskill_advice) && (
         <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
           <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Building2 className="size-4" /> Career mapping
@@ -602,10 +745,15 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
           <div className="space-y-4">
             {rwc.target_roles.length > 0 && (
               <div>
-                <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Roles you qualify for now</h5>
+                <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Roles you qualify for now
+                </h5>
                 <div className="flex flex-wrap gap-2">
                   {rwc.target_roles.map((r, i) => (
-                    <span key={i} className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    <span
+                      key={i}
+                      className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                    >
                       {r}
                     </span>
                   ))}
@@ -614,15 +762,22 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             )}
             {rwc.target_companies.length > 0 && (
               <div>
-                <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Companies that hire this stack</h5>
+                <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Companies that hire this stack
+                </h5>
                 <div className="flex flex-wrap gap-2">
                   {rwc.target_companies.map((c, i) => (
-                    <span key={i} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input/40 px-3 py-1 text-xs font-medium">
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input/40 px-3 py-1 text-xs font-medium"
+                    >
                       <Building2 className="size-3" /> {c}
                     </span>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">These companies hire for this specific stack and resume profile.</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  These companies hire for this specific stack and resume profile.
+                </p>
               </div>
             )}
             {rwc.market_upskill_advice && (
@@ -630,7 +785,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                 <GraduationCap className="mt-0.5 size-5 shrink-0 text-primary" />
                 <div>
                   <h5 className="font-display text-sm font-semibold text-primary">Upskill next</h5>
-                  <p className="mt-1 text-sm leading-relaxed text-foreground/90">{rwc.market_upskill_advice}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-foreground/90">
+                    {rwc.market_upskill_advice}
+                  </p>
                 </div>
               </div>
             )}
@@ -639,7 +796,10 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        <PercentileBellCurve />
+        <PercentileBellCurve
+          percentile={result.percentile}
+          benchmarkYear={result.percentileBenchmarkYear}
+        />
         <SkillFlashcardDeck skills={inner.missing_skills} />
       </div>
 
@@ -658,10 +818,15 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             <div className="space-y-4">
               {roles.length > 0 && (
                 <div>
-                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target roles</h5>
+                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Target roles
+                  </h5>
                   <div className="flex flex-wrap gap-2">
                     {roles.map((r, i) => (
-                      <span key={i} className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      <span
+                        key={i}
+                        className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                      >
                         {r}
                       </span>
                     ))}
@@ -670,10 +835,15 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
               )}
               {companies.length > 0 && (
                 <div>
-                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target companies</h5>
+                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Target companies
+                  </h5>
                   <div className="flex flex-wrap gap-2">
                     {companies.map((c, i) => (
-                      <span key={i} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input/40 px-3 py-1 text-xs font-medium">
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-input/40 px-3 py-1 text-xs font-medium"
+                      >
                         <Building2 className="size-3" /> {c}
                       </span>
                     ))}
@@ -684,7 +854,9 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
                 <div className="flex gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4">
                   <GraduationCap className="mt-0.5 size-5 shrink-0 text-primary" />
                   <div>
-                    <h5 className="font-display text-sm font-semibold text-primary">Upskill advice</h5>
+                    <h5 className="font-display text-sm font-semibold text-primary">
+                      Upskill advice
+                    </h5>
                     <p className="mt-1 text-sm leading-relaxed text-foreground/90">{advice}</p>
                   </div>
                 </div>
@@ -698,7 +870,11 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 
       <Section title="Skills detected in your resume" items={inner.resume_skills} tone="primary" />
       <Section title="Skills the job requires" items={inner.job_description_skills} tone="muted" />
-      <Section title="Missing or weak skills to address" items={inner.missing_skills} tone="destructive" />
+      <Section
+        title="Missing or weak skills to address"
+        items={inner.missing_skills}
+        tone="destructive"
+      />
 
       <div>
         <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -724,12 +900,21 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 function useThemeChartColors() {
   const [colors, setColors] = useState(["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"]);
   useEffect(() => {
-    const styles = getComputedStyle(document.documentElement);
-    setColors([
-      styles.getPropertyValue("--chart-1").trim() || "var(--chart-1)",
-      styles.getPropertyValue("--chart-2").trim() || "var(--chart-2)",
-      styles.getPropertyValue("--chart-3").trim() || "var(--chart-3)",
-    ]);
+    const readColors = () => {
+      const styles = getComputedStyle(document.documentElement);
+      setColors([
+        styles.getPropertyValue("--chart-1").trim() || "var(--chart-1)",
+        styles.getPropertyValue("--chart-2").trim() || "var(--chart-2)",
+        styles.getPropertyValue("--chart-3").trim() || "var(--chart-3)",
+      ]);
+    };
+    readColors();
+    const observer = new MutationObserver(readColors);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
   }, []);
   return colors;
 }
@@ -780,7 +965,9 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
           <p className="mt-3 break-words bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
             {salary?.range || "—"}
           </p>
-          <p className="mt-3 break-words text-xs leading-relaxed text-foreground/80">{salary?.reasoning}</p>
+          <p className="mt-3 break-words text-xs leading-relaxed text-foreground/80">
+            {salary?.reasoning}
+          </p>
         </div>
       </div>
 
@@ -830,7 +1017,6 @@ function BonusMetricCard({
   );
 }
 
-
 function FeedbackList({
   title,
   items,
@@ -856,13 +1042,14 @@ function FeedbackList({
       </h5>
       <ul className="space-y-1 text-sm text-foreground/90">
         {items.map((it, i) => (
-          <li key={i} className="leading-relaxed">• {it}</li>
+          <li key={i} className="leading-relaxed">
+            • {it}
+          </li>
         ))}
       </ul>
     </div>
   );
 }
-
 
 function Section({
   title,

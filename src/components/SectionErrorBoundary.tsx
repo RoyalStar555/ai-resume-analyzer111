@@ -19,7 +19,11 @@ export class SectionErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(`[SectionErrorBoundary${this.props.label ? ` · ${this.props.label}` : ""}]`, error, info);
+    console.error(
+      `[SectionErrorBoundary${this.props.label ? ` · ${this.props.label}` : ""}]`,
+      error,
+      info,
+    );
   }
 
   render() {

@@ -38,9 +38,10 @@
   --shadow-glow: 0 0 60px -10px color-mix(in oklch, var(--primary) 50%, transparent);
   --shadow-card: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 8px 24px -12px oklch(0 0 0 / 0.4);
   --gradient-primary: linear-gradient(135deg, oklch(0.72 0.18 165) 0%, oklch(0.65 0.2 200) 100%);
-  --gradient-mesh: radial-gradient(at 20% 10%, oklch(0.72 0.18 165 / 0.18) 0px, transparent 50%),
-                    radial-gradient(at 80% 20%, oklch(0.65 0.2 200 / 0.15) 0px, transparent 50%),
-                    radial-gradient(at 50% 90%, oklch(0.6 0.22 280 / 0.12) 0px, transparent 50%);
+  --gradient-mesh:
+    radial-gradient(at 20% 10%, oklch(0.72 0.18 165 / 0.18) 0px, transparent 50%),
+    radial-gradient(at 80% 20%, oklch(0.65 0.2 200 / 0.15) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, oklch(0.6 0.22 280 / 0.12) 0px, transparent 50%);
 }
 
 :root {
@@ -104,13 +105,17 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
@@ -151,9 +156,15 @@
     align-items: start;
   }
 
-  .bento-area-input { grid-area: input; }
-  .bento-area-report { grid-area: report; }
-  .bento-area-history { grid-area: history; }
+  .bento-area-input {
+    grid-area: input;
+  }
+  .bento-area-report {
+    grid-area: report;
+  }
+  .bento-area-history {
+    grid-area: history;
+  }
 }
 
 @media (max-width: 1023px) {

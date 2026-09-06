@@ -57,7 +57,11 @@ const AdvancedMetricsSchema = z.object({
   radar_competency: z.array(RadarCompetencySchema).default([]),
   market_alignment: z.array(MarketAlignmentSchema).default([]),
   deep_analysis: DeepAnalysisSchema.default({ impact_audit: "", red_flags: [] }),
-  career_mapping: CareerMappingSchema.default({ target_roles: [], target_companies: [], upskill_advice: "" }),
+  career_mapping: CareerMappingSchema.default({
+    target_roles: [],
+    target_companies: [],
+    upskill_advice: "",
+  }),
 });
 
 const BonusAuditSchema = z.object({
@@ -84,7 +88,11 @@ const AnalysisSchema = z.object({
   analysis: AnalysisInnerSchema,
   interview_probability: z.number().min(0).max(100).default(0),
   aspect_scores: z.array(AspectScoreSchema).default([]),
-  real_world_connect: RealWorldSchema.default({ target_roles: [], target_companies: [], market_upskill_advice: "" }),
+  real_world_connect: RealWorldSchema.default({
+    target_roles: [],
+    target_companies: [],
+    market_upskill_advice: "",
+  }),
   advanced_metrics: AdvancedMetricsSchema.default({
     interview_probability: 0,
     radar_competency: [],
@@ -99,7 +107,6 @@ const AnalysisSchema = z.object({
     generated_cover_letter: "",
   }),
 });
-
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
@@ -149,12 +156,49 @@ function canonicalize(token: string): string {
 
 function extractKeywords(text: string): string[] {
   const stop = new Set([
-    "the","and","for","with","you","are","but","not","this","that","from","your","our","will","have","has","was","were","their","they","them","its","into","per","also","any","all","may","can","using","use","used","work","working","team","teams","role","roles","year","years",
+    "the",
+    "and",
+    "for",
+    "with",
+    "you",
+    "are",
+    "but",
+    "not",
+    "this",
+    "that",
+    "from",
+    "your",
+    "our",
+    "will",
+    "have",
+    "has",
+    "was",
+    "were",
+    "their",
+    "they",
+    "them",
+    "its",
+    "into",
+    "per",
+    "also",
+    "any",
+    "all",
+    "may",
+    "can",
+    "using",
+    "use",
+    "used",
+    "work",
+    "working",
+    "team",
+    "teams",
+    "role",
+    "roles",
+    "year",
+    "years",
   ]);
   const raw = text.toLowerCase().match(/\b[a-z][a-z0-9+#./]{1,30}\b/g) || [];
-  return raw
-    .map(canonicalize)
-    .filter((w) => w.length >= 2 && !stop.has(w));
+  return raw.map(canonicalize).filter((w) => w.length >= 2 && !stop.has(w));
 }
 
 function computeAtsScore(jd: string, resume: string): number {
@@ -167,7 +211,10 @@ function computeAtsScore(jd: string, resume: string): number {
 
 function extractJson(text: string): unknown {
   if (!text || typeof text !== "string") throw new Error("AI returned empty response.");
-  let s = text.replace(/```(?:json|javascript|js)?\s*/gi, "").replace(/```/g, "").trim();
+  let s = text
+    .replace(/```(?:json|javascript|js)?\s*/gi, "")
+    .replace(/```/g, "")
+    .trim();
   const start = s.search(/[\{\[]/);
   const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
   if (start === -1 || end === -1 || end < start) throw new Error("AI returned no JSON.");
@@ -184,24 +231,64 @@ function extractJson(text: string): unknown {
   }
 }
 
+const FALLBACK_CHART_DATA = [
+  { name: "Strong Points", value: 33 },
+  { name: "Weak Points", value: 34 },
+  { name: "Actionable Suggestions", value: 33 },
+];
+
+function parseAnalysisResponse(text: string): ResumeAnalysis {
+  const raw = extractJson(text);
+  const parsed = AnalysisSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+
+  console.warn("AI response failed strict schema, applying defaults:", parsed.error.issues);
+  return AnalysisSchema.parse({
+    ...(typeof raw === "object" && raw !== null ? raw : {}),
+    harsh_feedback_summary:
+      (raw as any)?.harsh_feedback_summary ??
+      "Analysis returned partial data — some fields used safe defaults.",
+    chart_data:
+      Array.isArray((raw as any)?.chart_data) && (raw as any).chart_data.length
+        ? (raw as any).chart_data
+        : FALLBACK_CHART_DATA,
+    analysis: (raw as any)?.analysis ?? {},
+  });
+}
+
+function normalizeChartData(analysis: ResumeAnalysis): ResumeAnalysis {
+  const sum = analysis.chart_data.reduce((total, datum) => total + (datum.value || 0), 0);
+  if (sum <= 0 || sum === 100) return analysis;
+  const normalized = analysis.chart_data.map((datum) => ({
+    ...datum,
+    value: Math.round((datum.value / sum) * 100),
+  }));
+  const normalizedSum = normalized.reduce((total, datum) => total + datum.value, 0);
+  if (normalized.length > 0 && normalizedSum !== 100) {
+    normalized[normalized.length - 1].value += 100 - normalizedSum;
+  }
+  return { ...analysis, chart_data: normalized };
+}
+
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    resumeText: string;
-    jobDescription: string;
-    filename?: string;
-    abTestId?: string;
-    variantLabel?: "A" | "B";
-  }) =>
-    z
-      .object({
-        resumeText: z.string().min(20).max(50_000),
-        jobDescription: z.string().min(20).max(20_000),
-        filename: z.string().max(255).optional(),
-        abTestId: z.string().uuid().optional(),
-        variantLabel: z.enum(["A", "B"]).optional(),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      resumeText: string;
+      jobDescription: string;
+      filename?: string;
+      abTestId?: string;
+      variantLabel?: "A" | "B";
+    }) =>
+      z
+        .object({
+          resumeText: z.string().min(20).max(50_000),
+          jobDescription: z.string().min(20).max(20_000),
+          filename: z.string().max(255).optional(),
+          abTestId: z.string().uuid().optional(),
+          variantLabel: z.enum(["A", "B"]).optional(),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -213,18 +300,9 @@ export const analyzeResume = createServerFn({ method: "POST" })
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
 
-    let analysis: ResumeAnalysis;
+    let analysis: ResumeAnalysis | undefined;
     try {
-      // 60s timeout safety net so a stuck AI call doesn't hang the request
-      const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 60_000);
-
-      let text: string;
-      try {
-        const result = await generateText({
-          model,
-          abortSignal: timeoutController.signal,
-          prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
+      const prompt = `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
 
 Use this EXACT merged JSON schema (return BOTH the new advanced_metrics AND the legacy analysis fields):
 {
@@ -305,57 +383,50 @@ JOB DESCRIPTION:
 ${data.jobDescription}
 
 RESUME:
-${data.resumeText}`,
-        });
-        text = result.text;
-      } finally {
-        clearTimeout(timeoutId);
-      }
+${data.resumeText}`;
 
-      // Robust parse: prefer safeParse so missing fields fall back to Zod defaults
-      const raw = extractJson(text);
-      const parsed = AnalysisSchema.safeParse(raw);
-      if (parsed.success) {
-        analysis = parsed.data;
-      } else {
-        console.warn("AI response failed strict schema, applying defaults:", parsed.error.issues);
-        // Merge with defaults: re-parse via the schema using only valid pieces
-        analysis = AnalysisSchema.parse({
-          ...(typeof raw === "object" && raw !== null ? raw : {}),
-          harsh_feedback_summary:
-            (raw as any)?.harsh_feedback_summary ??
-            "Analysis returned partial data — some fields used safe defaults.",
-          chart_data:
-            Array.isArray((raw as any)?.chart_data) && (raw as any).chart_data.length
-              ? (raw as any).chart_data
-              : [
-                  { name: "Strong Points", value: 33 },
-                  { name: "Weak Points", value: 34 },
-                  { name: "Actionable Suggestions", value: 33 },
-                ],
-          analysis: (raw as any)?.analysis ?? {},
-        });
+      let lastParseError: unknown;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const remainingMs = 18_000;
+        const timeoutController = new AbortController();
+        const timeoutId = setTimeout(
+          () => timeoutController.abort(),
+          Math.min(20_000, remainingMs),
+        );
+        try {
+          const result = await generateText({
+            model,
+            abortSignal: timeoutController.signal,
+            prompt,
+          });
+          try {
+            analysis = normalizeChartData(parseAnalysisResponse(result.text));
+            lastParseError = undefined;
+            break;
+          } catch (parseError) {
+            lastParseError = parseError;
+            if (attempt === 2) throw parseError;
+            console.warn(
+              `Retrying malformed AI analysis response (attempt ${attempt + 1})`,
+              parseError,
+            );
+          }
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }
-
-      // Normalize chart_data to sum to 100
-      const sum = analysis.chart_data.reduce((a, b) => a + (b.value || 0), 0);
-      if (sum > 0 && sum !== 100) {
-        analysis.chart_data = analysis.chart_data.map((d) => ({
-          ...d,
-          value: Math.round((d.value / sum) * 100),
-        }));
-      }
+      if (!analysis) throw lastParseError ?? new Error("AI analysis returned no usable result.");
     } catch (err: any) {
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
-      if (status === 402) throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
+      if (status === 402)
+        throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
       if (err?.name === "AbortError" || /abort/i.test(err?.message ?? "")) {
         throw new Error("The AI took too long to respond. Please try again.");
       }
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
     }
-
 
     const { data: saved, error } = await supabase
       .from("resumes")
@@ -371,7 +442,8 @@ ${data.resumeText}`,
         formatting_metrics: {
           word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
           bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
-          heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? []).length,
+          heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? [])
+            .length,
           link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
         },
       })
@@ -407,7 +479,9 @@ export const listResumes = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data, error } = await supabase
       .from("resumes")
-      .select("id, ats_score, filename, created_at, analysis")
+      .select(
+        "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year",
+      )
       .order("created_at", { ascending: false })
       .limit(20);
     if (error) throw new Error(error.message);

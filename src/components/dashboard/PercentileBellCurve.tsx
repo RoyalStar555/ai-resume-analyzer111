@@ -14,7 +14,9 @@ export function PercentileBellCurve({ percentile, benchmarkYear }: Props) {
         <h3 className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           <Activity className="size-4 text-primary" /> Market percentile
         </h3>
-        {hasBenchmark && <span className="font-mono text-xs text-muted-foreground">{benchmarkYear}</span>}
+        {hasBenchmark && (
+          <span className="font-mono text-xs text-muted-foreground">{benchmarkYear}</span>
+        )}
       </div>
       {hasBenchmark ? (
         <>
@@ -25,15 +27,20 @@ export function PercentileBellCurve({ percentile, benchmarkYear }: Props) {
             />
           </div>
           <div className="mt-2 flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-            <span>Needs work</span><span>Market median</span><span>Top tier</span>
+            <span>Needs work</span>
+            <span>Market median</span>
+            <span>Top tier</span>
           </div>
-          <p className="mt-3 font-display text-2xl font-bold text-primary">{percentile}th percentile</p>
+          <p className="mt-3 font-display text-2xl font-bold text-primary">
+            {percentile}th percentile
+          </p>
         </>
       ) : (
         <div className="mt-5 flex items-start gap-3 rounded-xl border border-border bg-input/20 p-4">
           <LockKeyhole className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <p className="text-xs leading-relaxed text-muted-foreground">
-            A market benchmark will appear when a verified role dataset matches this analysis. The ATS score is never presented as a market percentile without that benchmark.
+            A market benchmark will appear when a verified role dataset matches this analysis. The
+            ATS score is never presented as a market percentile without that benchmark.
           </p>
         </div>
       )}
