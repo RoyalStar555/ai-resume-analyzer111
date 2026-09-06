@@ -184,6 +184,45 @@ function extractJson(text: string): unknown {
   }
 }
 
+const FALLBACK_CHART_DATA = [
+  { name: "Strong Points", value: 33 },
+  { name: "Weak Points", value: 34 },
+  { name: "Actionable Suggestions", value: 33 },
+];
+
+function parseAnalysisResponse(text: string): ResumeAnalysis {
+  const raw = extractJson(text);
+  const parsed = AnalysisSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+
+  console.warn("AI response failed strict schema, applying defaults:", parsed.error.issues);
+  return AnalysisSchema.parse({
+    ...(typeof raw === "object" && raw !== null ? raw : {}),
+    harsh_feedback_summary:
+      (raw as any)?.harsh_feedback_summary ??
+      "Analysis returned partial data — some fields used safe defaults.",
+    chart_data:
+      Array.isArray((raw as any)?.chart_data) && (raw as any).chart_data.length
+        ? (raw as any).chart_data
+        : FALLBACK_CHART_DATA,
+    analysis: (raw as any)?.analysis ?? {},
+  });
+}
+
+function normalizeChartData(analysis: ResumeAnalysis): ResumeAnalysis {
+  const sum = analysis.chart_data.reduce((total, datum) => total + (datum.value || 0), 0);
+  if (sum <= 0 || sum === 100) return analysis;
+  const normalized = analysis.chart_data.map((datum) => ({
+    ...datum,
+    value: Math.round((datum.value / sum) * 100),
+  }));
+  const normalizedSum = normalized.reduce((total, datum) => total + datum.value, 0);
+  if (normalized.length > 0 && normalizedSum !== 100) {
+    normalized[normalized.length - 1].value += 100 - normalizedSum;
+  }
+  return { ...analysis, chart_data: normalized };
+}
+
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: {
@@ -215,16 +254,7 @@ export const analyzeResume = createServerFn({ method: "POST" })
 
     let analysis: ResumeAnalysis;
     try {
-      // 60s timeout safety net so a stuck AI call doesn't hang the request
-      const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 60_000);
-
-      let text: string;
-      try {
-        const result = await generateText({
-          model,
-          abortSignal: timeoutController.signal,
-          prompt: `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
+      const prompt = `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
 
 Use this EXACT merged JSON schema (return BOTH the new advanced_metrics AND the legacy analysis fields):
 {
@@ -305,46 +335,29 @@ JOB DESCRIPTION:
 ${data.jobDescription}
 
 RESUME:
-${data.resumeText}`,
-        });
-        text = result.text;
-      } finally {
-        clearTimeout(timeoutId);
-      }
+${data.resumeText}`;
 
-      // Robust parse: prefer safeParse so missing fields fall back to Zod defaults
-      const raw = extractJson(text);
-      const parsed = AnalysisSchema.safeParse(raw);
-      if (parsed.success) {
-        analysis = parsed.data;
-      } else {
-        console.warn("AI response failed strict schema, applying defaults:", parsed.error.issues);
-        // Merge with defaults: re-parse via the schema using only valid pieces
-        analysis = AnalysisSchema.parse({
-          ...(typeof raw === "object" && raw !== null ? raw : {}),
-          harsh_feedback_summary:
-            (raw as any)?.harsh_feedback_summary ??
-            "Analysis returned partial data — some fields used safe defaults.",
-          chart_data:
-            Array.isArray((raw as any)?.chart_data) && (raw as any).chart_data.length
-              ? (raw as any).chart_data
-              : [
-                  { name: "Strong Points", value: 33 },
-                  { name: "Weak Points", value: 34 },
-                  { name: "Actionable Suggestions", value: 33 },
-                ],
-          analysis: (raw as any)?.analysis ?? {},
-        });
+      let lastParseError: unknown;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const remainingMs = 55_000 - attempt * 18_000;
+        const timeoutController = new AbortController();
+        const timeoutId = setTimeout(() => timeoutController.abort(), Math.min(20_000, remainingMs));
+        try {
+          const result = await generateText({ model, abortSignal: timeoutController.signal, prompt });
+          try {
+            analysis = normalizeChartData(parseAnalysisResponse(result.text));
+            lastParseError = undefined;
+            break;
+          } catch (parseError) {
+            lastParseError = parseError;
+            if (attempt === 2) throw parseError;
+            console.warn(`Retrying malformed AI analysis response (attempt ${attempt + 1})`, parseError);
+          }
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }
-
-      // Normalize chart_data to sum to 100
-      const sum = analysis.chart_data.reduce((a, b) => a + (b.value || 0), 0);
-      if (sum > 0 && sum !== 100) {
-        analysis.chart_data = analysis.chart_data.map((d) => ({
-          ...d,
-          value: Math.round((d.value / sum) * 100),
-        }));
-      }
+      if (!analysis && lastParseError) throw lastParseError;
     } catch (err: any) {
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");

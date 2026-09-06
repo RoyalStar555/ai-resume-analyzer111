@@ -48,7 +48,10 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-type AnalysisResult = ResumeAnalysisResult;
+type AnalysisResult = ResumeAnalysisResult & {
+  percentile?: number | null;
+  percentileBenchmarkYear?: number | null;
+};
 
 function Dashboard() {
   const analyzeFn = useServerFn(analyzeResume);
@@ -255,6 +258,10 @@ function Dashboard() {
           disabled={running || compare.isPending}
         />
 
+      </div>
+      </BentoArea>
+
+      <BentoArea area="report">
         {abVariants && <AbComparisonView variants={abVariants} />}
 
         {current && (
@@ -262,7 +269,6 @@ function Dashboard() {
             <AnalysisCard result={current} />
           </SectionErrorBoundary>
         )}
-      </div>
       </BentoArea>
 
       <BentoArea area="history"><aside className="space-y-4">
@@ -285,6 +291,8 @@ function Dashboard() {
                     score: r.ats_score,
                     analysis: r.analysis as unknown as ResumeAnalysis,
                     createdAt: r.created_at,
+                    percentile: r.percentile,
+                    percentileBenchmarkYear: r.percentile_benchmark_year,
                   })
                 }
               >
@@ -639,7 +647,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        <PercentileBellCurve />
+        <PercentileBellCurve percentile={result.percentile} benchmarkYear={result.percentileBenchmarkYear} />
         <SkillFlashcardDeck skills={inner.missing_skills} />
       </div>
 
@@ -724,12 +732,18 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 function useThemeChartColors() {
   const [colors, setColors] = useState(["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"]);
   useEffect(() => {
-    const styles = getComputedStyle(document.documentElement);
-    setColors([
-      styles.getPropertyValue("--chart-1").trim() || "var(--chart-1)",
-      styles.getPropertyValue("--chart-2").trim() || "var(--chart-2)",
-      styles.getPropertyValue("--chart-3").trim() || "var(--chart-3)",
-    ]);
+    const readColors = () => {
+      const styles = getComputedStyle(document.documentElement);
+      setColors([
+        styles.getPropertyValue("--chart-1").trim() || "var(--chart-1)",
+        styles.getPropertyValue("--chart-2").trim() || "var(--chart-2)",
+        styles.getPropertyValue("--chart-3").trim() || "var(--chart-3)",
+      ]);
+    };
+    readColors();
+    const observer = new MutationObserver(readColors);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
   }, []);
   return colors;
 }
