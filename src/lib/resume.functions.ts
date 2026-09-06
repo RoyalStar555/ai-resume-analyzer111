@@ -339,7 +339,7 @@ ${data.resumeText}`;
 
       let lastParseError: unknown;
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const remainingMs = 55_000 - attempt * 18_000;
+        const remainingMs = 18_000;
         const timeoutController = new AbortController();
         const timeoutId = setTimeout(() => timeoutController.abort(), Math.min(20_000, remainingMs));
         try {
