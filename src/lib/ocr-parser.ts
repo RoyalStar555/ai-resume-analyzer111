@@ -5,7 +5,10 @@ export async function extractTextWithOcr(
   signal?: AbortSignal,
 ): Promise<string> {
   if (typeof window === "undefined") throw new Error("OCR is only available in the browser.");
-  const [{ createWorker }, pdfjs] = await Promise.all([import("tesseract.js"), import("pdfjs-dist")]);
+  const [{ createWorker }, pdfjs] = await Promise.all([
+    import("tesseract.js"),
+    import("pdfjs-dist"),
+  ]);
   const worker = await createWorker("eng");
   try {
     const buffer = await file.arrayBuffer();

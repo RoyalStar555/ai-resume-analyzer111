@@ -57,7 +57,11 @@ const AdvancedMetricsSchema = z.object({
   radar_competency: z.array(RadarCompetencySchema).default([]),
   market_alignment: z.array(MarketAlignmentSchema).default([]),
   deep_analysis: DeepAnalysisSchema.default({ impact_audit: "", red_flags: [] }),
-  career_mapping: CareerMappingSchema.default({ target_roles: [], target_companies: [], upskill_advice: "" }),
+  career_mapping: CareerMappingSchema.default({
+    target_roles: [],
+    target_companies: [],
+    upskill_advice: "",
+  }),
 });
 
 const BonusAuditSchema = z.object({
@@ -84,7 +88,11 @@ const AnalysisSchema = z.object({
   analysis: AnalysisInnerSchema,
   interview_probability: z.number().min(0).max(100).default(0),
   aspect_scores: z.array(AspectScoreSchema).default([]),
-  real_world_connect: RealWorldSchema.default({ target_roles: [], target_companies: [], market_upskill_advice: "" }),
+  real_world_connect: RealWorldSchema.default({
+    target_roles: [],
+    target_companies: [],
+    market_upskill_advice: "",
+  }),
   advanced_metrics: AdvancedMetricsSchema.default({
     interview_probability: 0,
     radar_competency: [],
@@ -99,7 +107,6 @@ const AnalysisSchema = z.object({
     generated_cover_letter: "",
   }),
 });
-
 
 export type ResumeAnalysis = z.infer<typeof AnalysisSchema>;
 
@@ -149,12 +156,49 @@ function canonicalize(token: string): string {
 
 function extractKeywords(text: string): string[] {
   const stop = new Set([
-    "the","and","for","with","you","are","but","not","this","that","from","your","our","will","have","has","was","were","their","they","them","its","into","per","also","any","all","may","can","using","use","used","work","working","team","teams","role","roles","year","years",
+    "the",
+    "and",
+    "for",
+    "with",
+    "you",
+    "are",
+    "but",
+    "not",
+    "this",
+    "that",
+    "from",
+    "your",
+    "our",
+    "will",
+    "have",
+    "has",
+    "was",
+    "were",
+    "their",
+    "they",
+    "them",
+    "its",
+    "into",
+    "per",
+    "also",
+    "any",
+    "all",
+    "may",
+    "can",
+    "using",
+    "use",
+    "used",
+    "work",
+    "working",
+    "team",
+    "teams",
+    "role",
+    "roles",
+    "year",
+    "years",
   ]);
   const raw = text.toLowerCase().match(/\b[a-z][a-z0-9+#./]{1,30}\b/g) || [];
-  return raw
-    .map(canonicalize)
-    .filter((w) => w.length >= 2 && !stop.has(w));
+  return raw.map(canonicalize).filter((w) => w.length >= 2 && !stop.has(w));
 }
 
 function computeAtsScore(jd: string, resume: string): number {
@@ -167,7 +211,10 @@ function computeAtsScore(jd: string, resume: string): number {
 
 function extractJson(text: string): unknown {
   if (!text || typeof text !== "string") throw new Error("AI returned empty response.");
-  let s = text.replace(/```(?:json|javascript|js)?\s*/gi, "").replace(/```/g, "").trim();
+  let s = text
+    .replace(/```(?:json|javascript|js)?\s*/gi, "")
+    .replace(/```/g, "")
+    .trim();
   const start = s.search(/[\{\[]/);
   const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
   if (start === -1 || end === -1 || end < start) throw new Error("AI returned no JSON.");
@@ -225,22 +272,23 @@ function normalizeChartData(analysis: ResumeAnalysis): ResumeAnalysis {
 
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: {
-    resumeText: string;
-    jobDescription: string;
-    filename?: string;
-    abTestId?: string;
-    variantLabel?: "A" | "B";
-  }) =>
-    z
-      .object({
-        resumeText: z.string().min(20).max(50_000),
-        jobDescription: z.string().min(20).max(20_000),
-        filename: z.string().max(255).optional(),
-        abTestId: z.string().uuid().optional(),
-        variantLabel: z.enum(["A", "B"]).optional(),
-      })
-      .parse(input),
+  .inputValidator(
+    (input: {
+      resumeText: string;
+      jobDescription: string;
+      filename?: string;
+      abTestId?: string;
+      variantLabel?: "A" | "B";
+    }) =>
+      z
+        .object({
+          resumeText: z.string().min(20).max(50_000),
+          jobDescription: z.string().min(20).max(20_000),
+          filename: z.string().max(255).optional(),
+          abTestId: z.string().uuid().optional(),
+          variantLabel: z.enum(["A", "B"]).optional(),
+        })
+        .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -341,9 +389,16 @@ ${data.resumeText}`;
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const remainingMs = 18_000;
         const timeoutController = new AbortController();
-        const timeoutId = setTimeout(() => timeoutController.abort(), Math.min(20_000, remainingMs));
+        const timeoutId = setTimeout(
+          () => timeoutController.abort(),
+          Math.min(20_000, remainingMs),
+        );
         try {
-          const result = await generateText({ model, abortSignal: timeoutController.signal, prompt });
+          const result = await generateText({
+            model,
+            abortSignal: timeoutController.signal,
+            prompt,
+          });
           try {
             analysis = normalizeChartData(parseAnalysisResponse(result.text));
             lastParseError = undefined;
@@ -351,7 +406,10 @@ ${data.resumeText}`;
           } catch (parseError) {
             lastParseError = parseError;
             if (attempt === 2) throw parseError;
-            console.warn(`Retrying malformed AI analysis response (attempt ${attempt + 1})`, parseError);
+            console.warn(
+              `Retrying malformed AI analysis response (attempt ${attempt + 1})`,
+              parseError,
+            );
           }
         } finally {
           clearTimeout(timeoutId);
@@ -361,14 +419,14 @@ ${data.resumeText}`;
     } catch (err: any) {
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
-      if (status === 402) throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
+      if (status === 402)
+        throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
       if (err?.name === "AbortError" || /abort/i.test(err?.message ?? "")) {
         throw new Error("The AI took too long to respond. Please try again.");
       }
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
     }
-
 
     const { data: saved, error } = await supabase
       .from("resumes")
@@ -384,7 +442,8 @@ ${data.resumeText}`;
         formatting_metrics: {
           word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
           bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
-          heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? []).length,
+          heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? [])
+            .length,
           link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
         },
       })
@@ -420,7 +479,9 @@ export const listResumes = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data, error } = await supabase
       .from("resumes")
-        .select("id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year")
+      .select(
+        "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year",
+      )
       .order("created_at", { ascending: false })
       .limit(20);
     if (error) throw new Error(error.message);
