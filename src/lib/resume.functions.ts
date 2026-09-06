@@ -252,7 +252,7 @@ export const analyzeResume = createServerFn({ method: "POST" })
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
 
-    let analysis: ResumeAnalysis;
+    let analysis: ResumeAnalysis | undefined;
     try {
       const prompt = `You are an elite FAANG-level Senior Technical Recruiter and advanced ATS, benchmarking candidates against 2026 market standards. Be ruthless, never give the benefit of the doubt, and penalize missing or vaguely mentioned required skills heavily.
 
@@ -357,7 +357,7 @@ ${data.resumeText}`;
           clearTimeout(timeoutId);
         }
       }
-      if (!analysis && lastParseError) throw lastParseError;
+      if (!analysis) throw lastParseError ?? new Error("AI analysis returned no usable result.");
     } catch (err: any) {
       const status = err?.statusCode ?? err?.status;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
@@ -420,7 +420,7 @@ export const listResumes = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data, error } = await supabase
       .from("resumes")
-      .select("id, ats_score, filename, created_at, analysis")
+        .select("id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year")
       .order("created_at", { ascending: false })
       .limit(20);
     if (error) throw new Error(error.message);
