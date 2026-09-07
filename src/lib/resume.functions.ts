@@ -352,7 +352,7 @@ export const analyzeResume = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("AI gateway is not configured.");
 
     const score = computeAtsScore(data.jobDescription, data.resumeText);
@@ -449,16 +449,9 @@ ${data.resumeText}`;
 
       let lastParseError: unknown;
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const remainingMs = 18_000;
-        const timeoutController = new AbortController();
-        const timeoutId = setTimeout(
-          () => timeoutController.abort(),
-          Math.min(20_000, remainingMs),
-        );
         try {
           const result = await generateText({
             model,
-            abortSignal: timeoutController.signal,
             prompt,
           });
           try {
@@ -473,8 +466,6 @@ ${data.resumeText}`;
               parseError,
             );
           }
-        } finally {
-          clearTimeout(timeoutId);
         }
       }
       if (!analysis) throw lastParseError ?? new Error("AI analysis returned no usable result.");
@@ -483,9 +474,8 @@ ${data.resumeText}`;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
       if (status === 402)
         throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
-      if (err?.name === "AbortError" || /abort/i.test(err?.message ?? "")) {
-        throw new Error("The AI took too long to respond. Please try again.");
-      }
+      if (status === 403) throw new Error("AI analysis is currently unavailable for this workspace.");
+      if (status >= 500) throw new Error("The AI service is temporarily unavailable. Please try again.");
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
     }
@@ -578,7 +568,8 @@ export const listResumes = createServerFn({ method: "GET" })
         "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year, keyword_density, formatting_metrics",
       )
       .order("created_at", { ascending: false })
-      .limit(20);
+        .is("ab_test_id", null)
+        .limit(20);
     if (error) throw new Error(error.message);
     return data;
   });
