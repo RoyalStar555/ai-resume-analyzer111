@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
 import { generateText } from "ai";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
 
 const ChartDatumSchema = z.object({
   name: z.string(),
@@ -115,6 +117,23 @@ export type ResumeAnalysisResult = {
   score: number;
   analysis: ResumeAnalysis;
   createdAt: string;
+  percentile?: number | null;
+  percentileBenchmarkYear?: number | null;
+  keywordDensity?: Record<string, unknown> | null;
+  formattingMetrics?: Record<string, unknown> | null;
+};
+
+type AnalyzeInput = {
+  resumeText: string;
+  jobDescription: string;
+  filename?: string;
+  abTestId?: string;
+  variantLabel?: "A" | "B";
+};
+
+type AuthContext = {
+  supabase: SupabaseClient<Database>;
+  userId: string;
 };
 
 // --- Smart keyword normalization ---
@@ -209,6 +228,55 @@ function computeAtsScore(jd: string, resume: string): number {
   return Math.round((matches.length / jdWords.length) * 100);
 }
 
+function computeKeywordDensity(jd: string, resume: string) {
+  const required = [...new Set(extractKeywords(jd))];
+  const resumeSet = new Set(extractKeywords(resume));
+  const missing = required.filter((keyword) => !resumeSet.has(keyword));
+  return {
+    required_count: required.length,
+    matched_count: required.length - missing.length,
+    coverage_percent: required.length
+      ? Math.round(((required.length - missing.length) / required.length) * 100)
+      : 0,
+    missing_keywords: missing.slice(0, 40),
+  };
+}
+
+function inferRoleSlug(jobDescription: string): string | null {
+  const roleRules: Array<[string, string[]]> = [
+    ["senior-react-developer", ["senior react", "react developer", "react engineer"]],
+    ["frontend-engineer", ["frontend engineer", "front-end engineer", "frontend developer"]],
+    ["backend-engineer", ["backend engineer", "back-end engineer", "backend developer"]],
+    ["full-stack-engineer", ["full stack", "full-stack"]],
+    ["data-engineer", ["data engineer"]],
+    ["product-manager", ["product manager"]],
+  ];
+  const lower = jobDescription.toLowerCase();
+  return (
+    roleRules.find(([, phrases]) => phrases.some((phrase) => lower.includes(phrase)))?.[0] ?? null
+  );
+}
+
+function percentileFromCutPoints(score: number, cutPoints: unknown): number | null {
+  if (!cutPoints || typeof cutPoints !== "object" || Array.isArray(cutPoints)) return null;
+  const points = Object.entries(cutPoints)
+    .map(([label, threshold]) => {
+      const numericThreshold = Number(threshold);
+      const percentile = Number(label.replace(/[^0-9]/g, ""));
+      return Number.isFinite(numericThreshold) && percentile > 0
+        ? { threshold: numericThreshold, percentile }
+        : null;
+    })
+    .filter((point): point is { threshold: number; percentile: number } => point !== null)
+    .sort((a, b) => a.threshold - b.threshold);
+  if (!points.length) return null;
+  let result = points[0].percentile;
+  for (const point of points) {
+    if (score >= point.threshold) result = point.percentile;
+  }
+  return Math.max(1, Math.min(99, result));
+}
+
 function extractJson(text: string): unknown {
   if (!text || typeof text !== "string") throw new Error("AI returned empty response.");
   let s = text
@@ -272,30 +340,25 @@ function normalizeChartData(analysis: ResumeAnalysis): ResumeAnalysis {
 
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: {
-      resumeText: string;
-      jobDescription: string;
-      filename?: string;
-      abTestId?: string;
-      variantLabel?: "A" | "B";
-    }) =>
-      z
-        .object({
-          resumeText: z.string().min(20).max(50_000),
-          jobDescription: z.string().min(20).max(20_000),
-          filename: z.string().max(255).optional(),
-          abTestId: z.string().uuid().optional(),
-          variantLabel: z.enum(["A", "B"]).optional(),
-        })
-        .parse(input),
+  .inputValidator((input: AnalyzeInput) =>
+    z
+      .object({
+        resumeText: z.string().min(20).max(50_000),
+        jobDescription: z.string().min(20).max(20_000),
+        filename: z.string().max(255).optional(),
+        abTestId: z.string().uuid().optional(),
+        variantLabel: z.enum(["A", "B"]).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("AI gateway is not configured.");
 
     const score = computeAtsScore(data.jobDescription, data.resumeText);
+    const keywordDensity = computeKeywordDensity(data.jobDescription, data.resumeText);
+    const roleSlug = inferRoleSlug(data.jobDescription);
 
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
@@ -387,16 +450,9 @@ ${data.resumeText}`;
 
       let lastParseError: unknown;
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const remainingMs = 18_000;
-        const timeoutController = new AbortController();
-        const timeoutId = setTimeout(
-          () => timeoutController.abort(),
-          Math.min(20_000, remainingMs),
-        );
         try {
           const result = await generateText({
             model,
-            abortSignal: timeoutController.signal,
             prompt,
           });
           try {
@@ -411,8 +467,8 @@ ${data.resumeText}`;
               parseError,
             );
           }
-        } finally {
-          clearTimeout(timeoutId);
+        } catch (generationError) {
+          throw generationError;
         }
       }
       if (!analysis) throw lastParseError ?? new Error("AI analysis returned no usable result.");
@@ -421,11 +477,28 @@ ${data.resumeText}`;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
       if (status === 402)
         throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
-      if (err?.name === "AbortError" || /abort/i.test(err?.message ?? "")) {
-        throw new Error("The AI took too long to respond. Please try again.");
-      }
+      if (status === 403)
+        throw new Error("AI analysis is currently unavailable for this workspace.");
+      if (status >= 500)
+        throw new Error("The AI service is temporarily unavailable. Please try again.");
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
+    }
+
+    let percentile: number | null = null;
+    let percentileBenchmarkYear: number | null = null;
+    if (roleSlug) {
+      const { data: benchmark } = await supabase
+        .from("role_market_benchmarks")
+        .select("benchmark_year, percentile_cut_points")
+        .eq("role_slug", roleSlug)
+        .order("benchmark_year", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (benchmark) {
+        percentile = percentileFromCutPoints(score, benchmark.percentile_cut_points);
+        percentileBenchmarkYear = benchmark.benchmark_year;
+      }
     }
 
     const { data: saved, error } = await supabase
@@ -439,6 +512,10 @@ ${data.resumeText}`;
         filename: data.filename ?? null,
         ab_test_id: data.abTestId ?? null,
         variant_label: data.variantLabel ?? null,
+        role_slug: roleSlug,
+        percentile,
+        percentile_benchmark_year: percentileBenchmarkYear,
+        keyword_density: keywordDensity,
         formatting_metrics: {
           word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
           bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
@@ -455,7 +532,20 @@ ${data.resumeText}`;
       throw new Error("Failed to save analysis.");
     }
 
-    return { id: saved.id, score, analysis, createdAt: saved.created_at };
+    return {
+      id: saved.id,
+      score,
+      analysis,
+      createdAt: saved.created_at,
+      percentile,
+      percentileBenchmarkYear,
+      keywordDensity,
+      formattingMetrics: {
+        word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
+        bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
+        link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
+      },
+    };
   });
 
 export const createResumeAbTest = createServerFn({ method: "POST" })
@@ -480,9 +570,10 @@ export const listResumes = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("resumes")
       .select(
-        "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year",
+        "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year, keyword_density, formatting_metrics",
       )
       .order("created_at", { ascending: false })
+      .is("ab_test_id", null)
       .limit(20);
     if (error) throw new Error(error.message);
     return data;
