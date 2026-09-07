@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
 import { generateText } from "ai";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
 
 const ChartDatumSchema = z.object({
   name: z.string(),
@@ -115,6 +117,23 @@ export type ResumeAnalysisResult = {
   score: number;
   analysis: ResumeAnalysis;
   createdAt: string;
+  percentile?: number | null;
+  percentileBenchmarkYear?: number | null;
+  keywordDensity?: Record<string, unknown> | null;
+  formattingMetrics?: Record<string, unknown> | null;
+};
+
+type AnalyzeInput = {
+  resumeText: string;
+  jobDescription: string;
+  filename?: string;
+  abTestId?: string;
+  variantLabel?: "A" | "B";
+};
+
+type AuthContext = {
+  supabase: SupabaseClient<Database>;
+  userId: string;
 };
 
 // --- Smart keyword normalization ---
@@ -207,6 +226,53 @@ function computeAtsScore(jd: string, resume: string): number {
   const resumeSet = new Set(extractKeywords(resume));
   const matches = jdWords.filter((w) => resumeSet.has(w));
   return Math.round((matches.length / jdWords.length) * 100);
+}
+
+function computeKeywordDensity(jd: string, resume: string) {
+  const required = [...new Set(extractKeywords(jd))];
+  const resumeSet = new Set(extractKeywords(resume));
+  const missing = required.filter((keyword) => !resumeSet.has(keyword));
+  return {
+    required_count: required.length,
+    matched_count: required.length - missing.length,
+    coverage_percent: required.length
+      ? Math.round(((required.length - missing.length) / required.length) * 100)
+      : 0,
+    missing_keywords: missing.slice(0, 40),
+  };
+}
+
+function inferRoleSlug(jobDescription: string): string | null {
+  const roleRules: Array<[string, string[]]> = [
+    ["senior-react-developer", ["senior react", "react developer", "react engineer"]],
+    ["frontend-engineer", ["frontend engineer", "front-end engineer", "frontend developer"]],
+    ["backend-engineer", ["backend engineer", "back-end engineer", "backend developer"]],
+    ["full-stack-engineer", ["full stack", "full-stack"]],
+    ["data-engineer", ["data engineer"]],
+    ["product-manager", ["product manager"]],
+  ];
+  const lower = jobDescription.toLowerCase();
+  return roleRules.find(([, phrases]) => phrases.some((phrase) => lower.includes(phrase)))?.[0] ?? null;
+}
+
+function percentileFromCutPoints(score: number, cutPoints: unknown): number | null {
+  if (!cutPoints || typeof cutPoints !== "object" || Array.isArray(cutPoints)) return null;
+  const points = Object.entries(cutPoints)
+    .map(([label, threshold]) => {
+      const numericThreshold = Number(threshold);
+      const percentile = Number(label.replace(/[^0-9]/g, ""));
+      return Number.isFinite(numericThreshold) && percentile > 0
+        ? { threshold: numericThreshold, percentile }
+        : null;
+    })
+    .filter((point): point is { threshold: number; percentile: number } => point !== null)
+    .sort((a, b) => a.threshold - b.threshold);
+  if (!points.length) return null;
+  let result = points[0].percentile;
+  for (const point of points) {
+    if (score >= point.threshold) result = point.percentile;
+  }
+  return Math.max(1, Math.min(99, result));
 }
 
 function extractJson(text: string): unknown {
