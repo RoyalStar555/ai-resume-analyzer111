@@ -466,6 +466,8 @@ ${data.resumeText}`;
               parseError,
             );
           }
+        } catch (generationError) {
+          throw generationError;
         }
       }
       if (!analysis) throw lastParseError ?? new Error("AI analysis returned no usable result.");
