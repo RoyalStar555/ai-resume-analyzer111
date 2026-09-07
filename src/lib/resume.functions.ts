@@ -339,13 +339,7 @@ function normalizeChartData(analysis: ResumeAnalysis): ResumeAnalysis {
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: {
-      resumeText: string;
-      jobDescription: string;
-      filename?: string;
-      abTestId?: string;
-      variantLabel?: "A" | "B";
-    }) =>
+    (input: AnalyzeInput) =>
       z
         .object({
           resumeText: z.string().min(20).max(50_000),
@@ -362,6 +356,8 @@ export const analyzeResume = createServerFn({ method: "POST" })
     if (!apiKey) throw new Error("AI gateway is not configured.");
 
     const score = computeAtsScore(data.jobDescription, data.resumeText);
+    const keywordDensity = computeKeywordDensity(data.jobDescription, data.resumeText);
+    const roleSlug = inferRoleSlug(data.jobDescription);
 
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
@@ -494,6 +490,22 @@ ${data.resumeText}`;
       throw new Error("AI analysis failed. Please try again.");
     }
 
+    let percentile: number | null = null;
+    let percentileBenchmarkYear: number | null = null;
+    if (roleSlug) {
+      const { data: benchmark } = await supabase
+        .from("role_market_benchmarks")
+        .select("benchmark_year, percentile_cut_points")
+        .eq("role_slug", roleSlug)
+        .order("benchmark_year", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (benchmark) {
+        percentile = percentileFromCutPoints(score, benchmark.percentile_cut_points);
+        percentileBenchmarkYear = benchmark.benchmark_year;
+      }
+    }
+
     const { data: saved, error } = await supabase
       .from("resumes")
       .insert({
@@ -505,6 +517,10 @@ ${data.resumeText}`;
         filename: data.filename ?? null,
         ab_test_id: data.abTestId ?? null,
         variant_label: data.variantLabel ?? null,
+        role_slug: roleSlug,
+        percentile,
+        percentile_benchmark_year: percentileBenchmarkYear,
+        keyword_density: keywordDensity,
         formatting_metrics: {
           word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
           bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
@@ -521,7 +537,20 @@ ${data.resumeText}`;
       throw new Error("Failed to save analysis.");
     }
 
-    return { id: saved.id, score, analysis, createdAt: saved.created_at };
+    return {
+      id: saved.id,
+      score,
+      analysis,
+      createdAt: saved.created_at,
+      percentile,
+      percentileBenchmarkYear,
+      keywordDensity,
+      formattingMetrics: {
+        word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
+        bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
+        link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
+      },
+    };
   });
 
 export const createResumeAbTest = createServerFn({ method: "POST" })
@@ -546,7 +575,7 @@ export const listResumes = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("resumes")
       .select(
-        "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year",
+        "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year, keyword_density, formatting_metrics",
       )
       .order("created_at", { ascending: false })
       .limit(20);
