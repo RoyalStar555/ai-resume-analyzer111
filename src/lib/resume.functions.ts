@@ -252,7 +252,9 @@ function inferRoleSlug(jobDescription: string): string | null {
     ["product-manager", ["product manager"]],
   ];
   const lower = jobDescription.toLowerCase();
-  return roleRules.find(([, phrases]) => phrases.some((phrase) => lower.includes(phrase)))?.[0] ?? null;
+  return (
+    roleRules.find(([, phrases]) => phrases.some((phrase) => lower.includes(phrase)))?.[0] ?? null
+  );
 }
 
 function percentileFromCutPoints(score: number, cutPoints: unknown): number | null {
@@ -338,17 +340,16 @@ function normalizeChartData(analysis: ResumeAnalysis): ResumeAnalysis {
 
 export const analyzeResume = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: AnalyzeInput) =>
-      z
-        .object({
-          resumeText: z.string().min(20).max(50_000),
-          jobDescription: z.string().min(20).max(20_000),
-          filename: z.string().max(255).optional(),
-          abTestId: z.string().uuid().optional(),
-          variantLabel: z.enum(["A", "B"]).optional(),
-        })
-        .parse(input),
+  .inputValidator((input: AnalyzeInput) =>
+    z
+      .object({
+        resumeText: z.string().min(20).max(50_000),
+        jobDescription: z.string().min(20).max(20_000),
+        filename: z.string().max(255).optional(),
+        abTestId: z.string().uuid().optional(),
+        variantLabel: z.enum(["A", "B"]).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -476,8 +477,10 @@ ${data.resumeText}`;
       if (status === 429) throw new Error("AI rate limit reached. Please try again in a moment.");
       if (status === 402)
         throw new Error("AI credits exhausted. Add credits in Workspace Settings.");
-      if (status === 403) throw new Error("AI analysis is currently unavailable for this workspace.");
-      if (status >= 500) throw new Error("The AI service is temporarily unavailable. Please try again.");
+      if (status === 403)
+        throw new Error("AI analysis is currently unavailable for this workspace.");
+      if (status >= 500)
+        throw new Error("The AI service is temporarily unavailable. Please try again.");
       console.error("AI analysis failed:", err);
       throw new Error("AI analysis failed. Please try again.");
     }
@@ -570,8 +573,8 @@ export const listResumes = createServerFn({ method: "GET" })
         "id, ats_score, filename, created_at, analysis, percentile, percentile_benchmark_year, keyword_density, formatting_metrics",
       )
       .order("created_at", { ascending: false })
-        .is("ab_test_id", null)
-        .limit(20);
+      .is("ab_test_id", null)
+      .limit(20);
     if (error) throw new Error(error.message);
     return data;
   });
