@@ -7,6 +7,7 @@ type Props = {
   onSecondaryFileChange: (file: File | null) => void;
   onCompare: () => void;
   disabled?: boolean;
+  jdValid?: boolean;
 };
 
 export function AbTestInput({
