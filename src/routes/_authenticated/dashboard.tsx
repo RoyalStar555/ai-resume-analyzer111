@@ -349,6 +349,7 @@ function Dashboard() {
             onSecondaryFileChange={setSecondaryFile}
             onCompare={() => compare.mutate()}
             disabled={running || compare.isPending}
+            jdValid={jdValid}
           />
         </div>
       </BentoArea>
