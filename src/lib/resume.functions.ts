@@ -2,9 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
 import { generateText } from "ai";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
 
 const ChartDatumSchema = z.object({
   name: z.string(),
@@ -129,11 +127,6 @@ type AnalyzeInput = {
   filename?: string;
   abTestId?: string;
   variantLabel?: "A" | "B";
-};
-
-type AuthContext = {
-  supabase: SupabaseClient<Database>;
-  userId: string;
 };
 
 // --- Smart keyword normalization ---
@@ -501,6 +494,14 @@ ${data.resumeText}`;
       }
     }
 
+    const formattingMetrics = {
+      word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
+      bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
+      heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? [])
+        .length,
+      link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
+    };
+
     const { data: saved, error } = await supabase
       .from("resumes")
       .insert({
@@ -516,13 +517,7 @@ ${data.resumeText}`;
         percentile,
         percentile_benchmark_year: percentileBenchmarkYear,
         keyword_density: keywordDensity,
-        formatting_metrics: {
-          word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
-          bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
-          heading_count: (data.resumeText.match(/(^|\n)\s*[A-Z][A-Z &/]{3,}\s*($|\n)/g) ?? [])
-            .length,
-          link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
-        },
+        formatting_metrics: formattingMetrics,
       })
       .select("id, created_at")
       .single();
@@ -540,11 +535,7 @@ ${data.resumeText}`;
       percentile,
       percentileBenchmarkYear,
       keywordDensity,
-      formattingMetrics: {
-        word_count: data.resumeText.trim().split(/\s+/).filter(Boolean).length,
-        bullet_count: (data.resumeText.match(/(^|\n)\s*[•●▪◦*-]\s+/g) ?? []).length,
-        link_count: (data.resumeText.match(/https?:\/\/\S+/gi) ?? []).length,
-      },
+      formattingMetrics,
     };
   });
 
