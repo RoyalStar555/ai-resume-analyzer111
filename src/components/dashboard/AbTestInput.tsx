@@ -7,6 +7,7 @@ type Props = {
   onSecondaryFileChange: (file: File | null) => void;
   onCompare: () => void;
   disabled?: boolean;
+  jdValid?: boolean;
 };
 
 export function AbTestInput({
@@ -15,6 +16,7 @@ export function AbTestInput({
   onSecondaryFileChange,
   onCompare,
   disabled,
+  jdValid,
 }: Props) {
   return (
     <div className="glass rounded-2xl p-5 shadow-card">
@@ -50,7 +52,7 @@ export function AbTestInput({
       <Button
         className="mt-4 w-full"
         variant="outline"
-        disabled={disabled || !primaryFile || !secondaryFile}
+        disabled={disabled || !primaryFile || !secondaryFile || !jdValid}
         onClick={onCompare}
       >
         <GitCompareArrows /> Compare variants

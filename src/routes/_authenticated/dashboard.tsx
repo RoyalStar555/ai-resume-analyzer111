@@ -62,6 +62,30 @@ import { AbTestInput } from "@/components/dashboard/AbTestInput";
 import { PercentileBellCurve } from "@/components/dashboard/PercentileBellCurve";
 import { SkillFlashcardDeck } from "@/components/dashboard/SkillFlashcardDeck";
 
+function friendlyErrorMessage(error: unknown): string {
+  if (!error) return "Something went wrong. Please try again.";
+  if ((error as any)?.name === "AbortError") return "Analysis canceled";
+  const message = String((error as any)?.message ?? error);
+  if (
+    message.toLowerCase().includes("jobdescription") ||
+    message.toLowerCase().includes("job description") ||
+    message.toLowerCase().includes("too short") ||
+    message.toLowerCase().includes("min_length") ||
+    message.toLowerCase().includes("validation") ||
+    message.toLowerCase().includes("invalid")
+  ) {
+    return "Please paste a complete job description (at least 20 characters).";
+  }
+  if (
+    message.toLowerCase().includes("resumetext") ||
+    message.toLowerCase().includes("resume text")
+  ) {
+    return "Please upload a resume with extractable text.";
+  }
+  if (message.length > 160) return "Something went wrong. Please try again.";
+  return message;
+}
+
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
 const STAGES: { key: Stage; label: string }[] = [
   { key: "parsing", label: "Reading PDF" },
@@ -112,6 +136,8 @@ function Dashboard() {
   const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const jdValid = jd.trim().length >= 20;
+
   const history = useQuery({ queryKey: ["resumes"], queryFn: () => listFn() });
 
   const analyze = useMutation({
@@ -147,6 +173,7 @@ function Dashboard() {
       return result;
     },
     onSuccess: (res) => {
+      toast.dismiss();
       setCurrent(res as AnalysisResult);
       setStage(null);
       abortRef.current = null;
@@ -156,11 +183,12 @@ function Dashboard() {
     onError: (e: any) => {
       setStage(null);
       abortRef.current = null;
-      if (e?.name === "AbortError") {
-        toast("Analysis canceled");
+      const msg = friendlyErrorMessage(e);
+      if (msg === "Analysis canceled") {
+        toast(msg);
         return;
       }
-      toast.error(e.message ?? "Analysis failed");
+      toast.error(msg);
     },
   });
 
@@ -204,6 +232,7 @@ function Dashboard() {
       return [variantA, variantB] as [AnalysisResult, AnalysisResult];
     },
     onSuccess: (variants) => {
+      toast.dismiss();
       setAbVariants(variants);
       setCurrent(variants[0]);
       setStage(null);
@@ -214,8 +243,9 @@ function Dashboard() {
     onError: (error: Error) => {
       setStage(null);
       abortRef.current = null;
-      if (error.name === "AbortError") return toast("Comparison canceled");
-      toast.error(error.message ?? "Comparison failed");
+      const msg = friendlyErrorMessage(error);
+      if (msg === "Analysis canceled") return toast("Comparison canceled");
+      toast.error(msg);
     },
   });
 
@@ -303,7 +333,8 @@ function Dashboard() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                  disabled={!file || !jdValid}
+                  className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 disabled:opacity-50"
                 >
                   <Sparkles className="mr-2 size-4" />
                   Analyze match
@@ -318,6 +349,7 @@ function Dashboard() {
             onSecondaryFileChange={setSecondaryFile}
             onCompare={() => compare.mutate()}
             disabled={running || compare.isPending}
+            jdValid={jdValid}
           />
         </div>
       </BentoArea>
