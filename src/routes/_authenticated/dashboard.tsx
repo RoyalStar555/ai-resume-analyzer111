@@ -173,6 +173,7 @@ function Dashboard() {
       return result;
     },
     onSuccess: (res) => {
+      toast.dismiss();
       setCurrent(res as AnalysisResult);
       setStage(null);
       abortRef.current = null;
@@ -182,11 +183,12 @@ function Dashboard() {
     onError: (e: any) => {
       setStage(null);
       abortRef.current = null;
-      if (e?.name === "AbortError") {
-        toast("Analysis canceled");
+      const msg = friendlyErrorMessage(e);
+      if (msg === "Analysis canceled") {
+        toast(msg);
         return;
       }
-      toast.error(e.message ?? "Analysis failed");
+      toast.error(msg);
     },
   });
 
