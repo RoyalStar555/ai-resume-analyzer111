@@ -52,7 +52,7 @@ export function AbTestInput({
       <Button
         className="mt-4 w-full"
         variant="outline"
-        disabled={disabled || !primaryFile || !secondaryFile}
+        disabled={disabled || !primaryFile || !secondaryFile || !jdValid}
         onClick={onCompare}
       >
         <GitCompareArrows /> Compare variants
