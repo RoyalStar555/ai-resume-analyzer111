@@ -333,7 +333,8 @@ function Dashboard() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                  disabled={!file || !jdValid}
+                  className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 disabled:opacity-50"
                 >
                   <Sparkles className="mr-2 size-4" />
                   Analyze match
