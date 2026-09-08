@@ -136,6 +136,8 @@ function Dashboard() {
   const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const jdValid = jd.trim().length >= 20;
+
   const history = useQuery({ queryKey: ["resumes"], queryFn: () => listFn() });
 
   const analyze = useMutation({
