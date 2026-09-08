@@ -232,6 +232,7 @@ function Dashboard() {
       return [variantA, variantB] as [AnalysisResult, AnalysisResult];
     },
     onSuccess: (variants) => {
+      toast.dismiss();
       setAbVariants(variants);
       setCurrent(variants[0]);
       setStage(null);
@@ -242,8 +243,9 @@ function Dashboard() {
     onError: (error: Error) => {
       setStage(null);
       abortRef.current = null;
-      if (error.name === "AbortError") return toast("Comparison canceled");
-      toast.error(error.message ?? "Comparison failed");
+      const msg = friendlyErrorMessage(error);
+      if (msg === "Analysis canceled") return toast("Comparison canceled");
+      toast.error(msg);
     },
   });
 
