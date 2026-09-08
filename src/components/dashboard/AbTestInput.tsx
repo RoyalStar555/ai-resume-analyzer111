@@ -16,6 +16,7 @@ export function AbTestInput({
   onSecondaryFileChange,
   onCompare,
   disabled,
+  jdValid,
 }: Props) {
   return (
     <div className="glass rounded-2xl p-5 shadow-card">
