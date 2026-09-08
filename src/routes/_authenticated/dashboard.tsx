@@ -62,6 +62,30 @@ import { AbTestInput } from "@/components/dashboard/AbTestInput";
 import { PercentileBellCurve } from "@/components/dashboard/PercentileBellCurve";
 import { SkillFlashcardDeck } from "@/components/dashboard/SkillFlashcardDeck";
 
+function friendlyErrorMessage(error: unknown): string {
+  if (!error) return "Something went wrong. Please try again.";
+  if ((error as any)?.name === "AbortError") return "Analysis canceled";
+  const message = String((error as any)?.message ?? error);
+  if (
+    message.toLowerCase().includes("jobdescription") ||
+    message.toLowerCase().includes("job description") ||
+    message.toLowerCase().includes("too short") ||
+    message.toLowerCase().includes("min_length") ||
+    message.toLowerCase().includes("validation") ||
+    message.toLowerCase().includes("invalid")
+  ) {
+    return "Please paste a complete job description (at least 20 characters).";
+  }
+  if (
+    message.toLowerCase().includes("resumetext") ||
+    message.toLowerCase().includes("resume text")
+  ) {
+    return "Please upload a resume with extractable text.";
+  }
+  if (message.length > 160) return "Something went wrong. Please try again.";
+  return message;
+}
+
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
 const STAGES: { key: Stage; label: string }[] = [
   { key: "parsing", label: "Reading PDF" },
