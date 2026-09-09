@@ -1,7 +1,7 @@
 export function ComparisonMetric({ label, a, b }: { label: string; a: number; b: number }) {
   const winner = a === b ? "tie" : a > b ? "a" : "b";
   return (
-    <div className="rounded-xl border border-border bg-input/20 p-4">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>{label}</span>
         <span className="font-mono">A / B</span>

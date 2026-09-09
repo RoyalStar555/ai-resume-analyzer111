@@ -19,24 +19,24 @@ export function AbTestInput({
   jdValid,
 }: Props) {
   return (
-    <div className="glass rounded-2xl p-5 shadow-card">
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <GitCompareArrows className="size-4" />
         </div>
         <div>
-          <h2 className="font-display text-base font-semibold">Resume A/B test</h2>
+          <h2 className="font-display text-base font-semibold text-slate-900">Resume A/B test</h2>
           <p className="text-xs text-muted-foreground">
             Compare two versions against the same role.
           </p>
         </div>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-input/20 p-3 text-xs text-muted-foreground">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
           <FileText className="mb-2 size-4 text-primary" />
           Variant A: {primaryFile?.name ?? "Choose a primary resume above"}
         </div>
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-input/20 p-3 text-xs text-muted-foreground hover:border-primary/60">
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500 hover:border-emerald-500">
           <Upload className="size-4 text-primary" />
           <span className="min-w-0 flex-1 truncate">
             {secondaryFile?.name ?? "Upload variant B"}

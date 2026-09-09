@@ -9,7 +9,7 @@ export function AbComparisonView({ variants }: { variants: [Variant, Variant] | 
   const [a, b] = variants;
   const winner = a.score === b.score ? "Tie" : a.score > b.score ? "Variant A" : "Variant B";
   return (
-    <div className="glass rounded-2xl p-5 shadow-card">
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="flex items-center gap-2 font-display text-base font-semibold">
         <GitCompareArrows className="size-4 text-primary" /> A/B comparison{" "}
         <span className="ml-auto flex items-center gap-1 text-xs text-success">
