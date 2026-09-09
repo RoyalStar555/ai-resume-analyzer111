@@ -6,3 +6,4 @@
 - [ ] Milestone 3: multi-resume A/B testing flow and comparison view
 - [ ] Milestone 4: bounded AI retries and browser-only OCR fallback
 - [ ] Final: typecheck, build, lint, and authenticated browser verification
+- [ ] Enterprise light-mode dashboard polish and awaiting-analysis state

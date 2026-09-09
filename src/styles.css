@@ -31,74 +31,42 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Inter", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "Inter", system-ui, sans-serif;
 
-  --shadow-glow: 0 0 60px -10px color-mix(in oklch, var(--primary) 50%, transparent);
-  --shadow-card: 0 1px 0 0 oklch(1 0 0 / 0.05) inset, 0 8px 24px -12px oklch(0 0 0 / 0.4);
-  --gradient-primary: linear-gradient(135deg, oklch(0.72 0.18 165) 0%, oklch(0.65 0.2 200) 100%);
-  --gradient-mesh:
-    radial-gradient(at 20% 10%, oklch(0.72 0.18 165 / 0.18) 0px, transparent 50%),
-    radial-gradient(at 80% 20%, oklch(0.65 0.2 200 / 0.15) 0px, transparent 50%),
-    radial-gradient(at 50% 90%, oklch(0.6 0.22 280 / 0.12) 0px, transparent 50%);
+  --shadow-glow: 0 1px 2px 0 oklch(0.15 0.02 250 / 0.05);
+  --shadow-card: 0 1px 2px 0 oklch(0.15 0.02 250 / 0.05);
+  --gradient-primary: linear-gradient(135deg, oklch(0.54 0.14 163), oklch(0.49 0.13 163));
+  --gradient-mesh: none;
 }
 
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.16 0.02 240);
-  --foreground: oklch(0.97 0.005 240);
-  --card: oklch(0.21 0.02 240);
-  --card-foreground: oklch(0.97 0.005 240);
-  --popover: oklch(0.21 0.02 240);
-  --popover-foreground: oklch(0.97 0.005 240);
-  --primary: oklch(0.78 0.17 165);
-  --primary-foreground: oklch(0.18 0.03 200);
-  --secondary: oklch(0.28 0.02 240);
-  --secondary-foreground: oklch(0.97 0.005 240);
-  --muted: oklch(0.25 0.02 240);
-  --muted-foreground: oklch(0.7 0.02 240);
-  --accent: oklch(0.65 0.2 200);
-  --accent-foreground: oklch(0.16 0.02 240);
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.97 0 0);
-  --success: oklch(0.75 0.17 155);
-  --warning: oklch(0.78 0.16 70);
-  --border: oklch(1 0 0 / 0.08);
-  --input: oklch(1 0 0 / 0.06);
-  --ring: oklch(0.78 0.17 165);
-  --chart-1: oklch(0.78 0.17 165);
-  --chart-2: oklch(0.65 0.22 25);
-  --chart-3: oklch(0.68 0.2 300);
-}
-
-.dark {
-  --background: oklch(0.16 0.02 240);
-  --foreground: oklch(0.97 0.005 240);
-}
-
-[data-theme="cyberpunk"] {
-  --primary: oklch(0.82 0.2 190);
-  --primary-foreground: oklch(0.14 0.03 240);
-  --accent: oklch(0.74 0.22 315);
-  --accent-foreground: oklch(0.14 0.03 240);
-  --ring: oklch(0.82 0.2 190);
-  --chart-1: oklch(0.82 0.2 190);
-  --chart-2: oklch(0.7 0.22 25);
-  --chart-3: oklch(0.74 0.22 315);
-}
-
-[data-theme="monochrome"] {
-  --primary: oklch(0.82 0 0);
-  --primary-foreground: oklch(0.15 0 0);
-  --accent: oklch(0.68 0 0);
-  --accent-foreground: oklch(0.12 0 0);
-  --success: oklch(0.78 0 0);
-  --warning: oklch(0.62 0 0);
-  --ring: oklch(0.82 0 0);
-  --chart-1: oklch(0.85 0 0);
-  --chart-2: oklch(0.6 0 0);
-  --chart-3: oklch(0.38 0 0);
+  --radius: 0.5rem;
+  --background: oklch(0.984 0.003 247);
+  --foreground: oklch(0.208 0.042 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.042 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.208 0.042 265);
+  --primary: oklch(0.527 0.137 163);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.968 0.007 248);
+  --secondary-foreground: oklch(0.279 0.041 260);
+  --muted: oklch(0.968 0.007 248);
+  --muted-foreground: oklch(0.554 0.041 257);
+  --accent: oklch(0.962 0.044 163);
+  --accent-foreground: oklch(0.373 0.096 163);
+  --destructive: oklch(0.586 0.222 17);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.527 0.137 163);
+  --warning: oklch(0.666 0.179 58);
+  --border: oklch(0.929 0.013 255);
+  --input: oklch(0.929 0.013 255);
+  --ring: oklch(0.527 0.137 163);
+  --chart-1: oklch(0.527 0.137 163);
+  --chart-2: oklch(0.586 0.222 17);
+  --chart-3: oklch(0.554 0.041 257);
 }
 
 @layer base {
@@ -117,7 +85,7 @@
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
 }
 
@@ -141,9 +109,8 @@
     box-shadow: var(--shadow-card);
   }
   .glass {
-    background-color: oklch(1 0 0 / 0.03);
-    backdrop-filter: blur(12px);
-    border: 1px solid oklch(1 0 0 / 0.06);
+    background-color: var(--card);
+    border: 1px solid var(--border);
   }
 
   .bento-grid {
