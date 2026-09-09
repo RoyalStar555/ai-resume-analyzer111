@@ -61,6 +61,7 @@ import { AbComparisonView } from "@/components/dashboard/AbComparisonView";
 import { AbTestInput } from "@/components/dashboard/AbTestInput";
 import { PercentileBellCurve } from "@/components/dashboard/PercentileBellCurve";
 import { SkillFlashcardDeck } from "@/components/dashboard/SkillFlashcardDeck";
+import { AwaitingAnalysis, SimulationSlider } from "@/components/dashboard/AwaitingAnalysis";
 
 function friendlyErrorMessage(error: unknown): string {
   if (!error) return "Something went wrong. Please try again.";
@@ -134,6 +135,7 @@ function Dashboard() {
   const [current, setCurrent] = useState<AnalysisResult | null>(null);
   const [secondaryFile, setSecondaryFile] = useState<File | null>(null);
   const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
+  const [simulationThreshold, setSimulationThreshold] = useState(85);
   const abortRef = useRef<AbortController | null>(null);
 
   const jdValid = jd.trim().length >= 20;
@@ -268,7 +270,7 @@ function Dashboard() {
       <BentoArea area="input">
         <div className="min-w-0 space-y-8">
           <div>
-            <h1 className="font-display text-3xl font-semibold">Run an analysis</h1>
+            <h1 className="font-display text-3xl font-semibold text-slate-950">Resume intelligence</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Paste the target job description and upload your resume PDF.
             </p>
@@ -279,7 +281,7 @@ function Dashboard() {
               e.preventDefault();
               analyze.mutate();
             }}
-            className="glass space-y-5 rounded-2xl p-6 shadow-card"
+            className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
           >
             <div className="space-y-2">
               <Label htmlFor="jd">Job description</Label>
@@ -295,7 +297,7 @@ function Dashboard() {
 
             <div className="space-y-2">
               <Label>Resume (PDF)</Label>
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-input/40 px-4 py-6 transition hover:border-primary/60">
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 transition hover:border-emerald-500">
                 <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
                   <Upload className="size-5" />
                 </div>
@@ -334,7 +336,7 @@ function Dashboard() {
                   type="submit"
                   size="lg"
                   disabled={!file || !jdValid}
-                  className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 disabled:opacity-50"
+                  className="w-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
                 >
                   <Sparkles className="mr-2 size-4" />
                   Analyze match
@@ -357,16 +359,27 @@ function Dashboard() {
       <BentoArea area="report">
         {abVariants && <AbComparisonView variants={abVariants} />}
 
+        {!current && (
+          <AwaitingAnalysis
+            threshold={simulationThreshold}
+            onThresholdChange={setSimulationThreshold}
+          />
+        )}
+
         {current && (
           <SectionErrorBoundary label="Analysis results">
-            <AnalysisCard result={current} />
+            <AnalysisCard
+              result={current}
+              simulationThreshold={simulationThreshold}
+              onSimulationThresholdChange={setSimulationThreshold}
+            />
           </SectionErrorBoundary>
         )}
       </BentoArea>
 
       <BentoArea area="history">
         <aside className="space-y-4">
-          <h2 className="font-display text-lg font-semibold">Recent analyses</h2>
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Recent analyses</h2>
           {history.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
           {history.data?.length === 0 && (
             <p className="text-sm text-muted-foreground">No analyses yet.</p>
@@ -375,7 +388,7 @@ function Dashboard() {
             {history.data?.map((r) => (
               <li
                 key={r.id}
-                className="glass flex items-center justify-between gap-3 rounded-xl p-3 shadow-card"
+                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
               >
                 <button
                   className="flex flex-1 items-center gap-3 text-left"
@@ -439,7 +452,15 @@ async function readResumeText(file: File, signal: AbortSignal): Promise<string> 
   }
 }
 
-function AnalysisCard({ result }: { result: AnalysisResult }) {
+function AnalysisCard({
+  result,
+  simulationThreshold,
+  onSimulationThresholdChange,
+}: {
+  result: AnalysisResult;
+  simulationThreshold: number;
+  onSimulationThresholdChange: (value: number) => void;
+}) {
   const { score, analysis } = result;
   const inner = analysis.analysis;
   const tone =
@@ -467,7 +488,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
   };
 
   return (
-    <div className="glass space-y-6 rounded-2xl p-6 shadow-card print:bg-white print:text-black">
+    <div className="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm print:bg-white print:text-slate-950">
       {/* Export & share */}
       <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
         <Button size="sm" variant="outline" onClick={handlePrint}>
@@ -481,7 +502,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {/* Section A: Top-level verdict */}
       <div className="flex items-center gap-4">
         <div
-          className="grid size-20 place-items-center rounded-2xl text-2xl font-bold"
+          className="grid size-20 place-items-center rounded-lg text-2xl font-semibold"
           style={{ background: `color-mix(in oklch, ${tone} 20%, transparent)`, color: tone }}
         >
           {score}%
@@ -511,8 +532,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {/* Section B: Visual breakdown */}
       <div className="grid gap-8 md:grid-cols-2 md:gap-10">
         <SectionErrorBoundary label="Evaluation breakdown">
-          <div className="overflow-hidden rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-            <h3 className="mb-4 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="mb-4 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               Evaluation breakdown
             </h3>
             <div className="h-72 w-full">
@@ -584,8 +605,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         <SectionErrorBoundary label="Competency & market charts">
           <div className="grid gap-6 md:grid-cols-2">
             {(analysis.advanced_metrics?.radar_competency?.length ?? 0) > 0 && (
-              <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-                <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   <Activity className="size-4" /> Competency radar
                 </h3>
                 <div className="h-72 w-full">
@@ -623,8 +644,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             )}
 
             {(analysis.advanced_metrics?.market_alignment?.length ?? 0) > 0 && (
-              <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-                <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   <TrendingUp className="size-4" /> Market alignment
                 </h3>
                 <div className="h-72 w-full">
@@ -677,7 +698,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         (analysis.advanced_metrics?.deep_analysis?.red_flags?.length ?? 0) > 0) && (
         <div className="grid gap-6 md:grid-cols-2">
           {analysis.advanced_metrics?.deep_analysis?.impact_audit && (
-            <div className="glass rounded-xl border border-primary/30 p-6 shadow-card">
+            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
               <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-primary">
                 <Activity className="size-4" /> Impact audit
               </h3>
@@ -687,7 +708,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
             </div>
           )}
           {(analysis.advanced_metrics?.deep_analysis?.red_flags?.length ?? 0) > 0 && (
-            <div className="glass rounded-xl border border-destructive/40 p-6 shadow-card">
+            <div className="rounded-lg border border-rose-200 bg-white p-6 shadow-sm">
               <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-destructive">
                 <ShieldAlert className="size-4" /> Critical red flags
               </h3>
@@ -706,8 +727,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
 
       {/* Advanced metrics */}
       {(aspects.length > 0 || interviewProb > 0) && (
-        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             <TrendingUp className="size-4" /> Advanced metrics
           </h3>
           <div className="grid gap-6 md:grid-cols-2">
@@ -720,7 +741,7 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-input">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary via-fuchsia-500 to-rose-500 transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${interviewProb}%` }}
                 />
               </div>
@@ -770,8 +791,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       {(rwc.target_roles.length > 0 ||
         rwc.target_companies.length > 0 ||
         rwc.market_upskill_advice) && (
-        <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             <Building2 className="size-4" /> Career mapping
           </h3>
           <div className="space-y-4">
@@ -843,8 +864,8 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
         const advice = cm?.upskill_advice ?? "";
         if (roles.length === 0 && companies.length === 0 && !advice) return null;
         return (
-          <div className="rounded-xl border border-border bg-input/20 p-6 shadow-sm">
-            <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               <Building2 className="size-4" /> Career mapping
             </h3>
             <div className="space-y-4">
@@ -909,22 +930,31 @@ function AnalysisCard({ result }: { result: AnalysisResult }) {
       />
 
       <div>
-        <h3 className="mb-3 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           <FileText className="size-4" /> Tailored bullet rewrites
         </h3>
         <ul className="space-y-2">
           {inner.bullet_point_improvements.map((b, i) => (
-            <li
-              key={i}
-              className="rounded-xl border border-border bg-input/30 p-4 text-sm leading-relaxed"
-            >
-              {b}
+            <li key={i} className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
+                <span className="mb-2 block text-[9px] font-semibold uppercase tracking-wider text-slate-400">Original</span>
+                Resume bullet identified for improvement
+              </div>
+              <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm leading-relaxed text-slate-900">
+                <span className="mb-2 inline-flex rounded bg-emerald-100 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-700">ATS optimized</span>
+                <p>{b}</p>
+              </div>
             </li>
           ))}
         </ul>
       </div>
 
       <BonusFeaturesSection bonus={analysis.bonus_features} />
+
+      <SimulationSlider
+        threshold={simulationThreshold}
+        onThresholdChange={onSimulationThresholdChange}
+      />
     </div>
   );
 }
