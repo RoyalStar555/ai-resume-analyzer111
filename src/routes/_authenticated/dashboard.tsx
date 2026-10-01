@@ -88,6 +88,12 @@ function friendlyErrorMessage(error: unknown): string {
 }
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving";
+const SIMULATION_STEPS = [
+  "Extracting document text...",
+  "Sanitizing PII data...",
+  "Vectorizing skill metrics...",
+  "Drafting ATS rewrites...",
+];
 const STAGES: { key: Stage; label: string }[] = [
   { key: "parsing", label: "Reading PDF" },
   { key: "scoring", label: "Computing ATS keyword score" },
@@ -132,13 +138,53 @@ function Dashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [jd, setJd] = useState("");
   const [stage, setStage] = useState<Stage | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showMockData, setShowMockData] = useState(false);
+  const [loadingStepIndex, setLoadingStepIndex] = useState(0);
   const [current, setCurrent] = useState<AnalysisResult | null>(null);
   const [secondaryFile, setSecondaryFile] = useState<File | null>(null);
   const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
-  const [simulationThreshold, setSimulationThreshold] = useState(85);
+  const [mockScore, setMockScore] = useState(85);
   const abortRef = useRef<AbortController | null>(null);
 
   const jdValid = jd.trim().length >= 20;
+
+  useEffect(() => {
+    if (!isAnalyzing) return;
+
+    const intervalId = window.setInterval(() => {
+      setLoadingStepIndex((index) => (index + 1) % SIMULATION_STEPS.length);
+    }, 1200);
+    const timeoutId = window.setTimeout(() => {
+      setIsAnalyzing(false);
+      setShowMockData(true);
+    }, 4800);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [isAnalyzing]);
+
+  const resetForInputChange = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStage(null);
+    setIsAnalyzing(false);
+    setShowMockData(false);
+    setLoadingStepIndex(0);
+    setCurrent(null);
+    setAbVariants(null);
+  };
+
+  const startAnalysisPreview = () => {
+    toast.dismiss();
+    setCurrent(null);
+    setAbVariants(null);
+    setLoadingStepIndex(0);
+    setShowMockData(false);
+    setIsAnalyzing(true);
+  };
 
   const history = useQuery({ queryKey: ["resumes"], queryFn: () => listFn() });
 
@@ -279,6 +325,8 @@ function Dashboard() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (!file || !jdValid || isAnalyzing || running) return;
+              startAnalysisPreview();
               analyze.mutate();
             }}
             className="space-y-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
@@ -290,7 +338,11 @@ function Dashboard() {
                 rows={8}
                 placeholder="Paste the full job description here…"
                 value={jd}
-                onChange={(e) => setJd(e.target.value)}
+                onChange={(e) => {
+                  resetForInputChange();
+                  setJd(e.target.value);
+                }}
+                readOnly={isAnalyzing || running}
                 required
               />
             </div>
@@ -312,7 +364,10 @@ function Dashboard() {
                   type="file"
                   accept="application/pdf"
                   className="hidden"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    resetForInputChange();
+                    setFile(e.target.files?.[0] ?? null);
+                  }}
                 />
               </label>
             </div>
@@ -320,26 +375,19 @@ function Dashboard() {
             {running && stage ? <StageTracker active={stage} /> : null}
 
             <div className="flex gap-3">
-              {running ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={cancel}
-                  className="w-full"
-                >
+              <Button
+                type="submit"
+                size="lg"
+                disabled={!file || !jdValid || isAnalyzing || running}
+                className="w-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Sparkles className="mr-2 size-4" />
+                Analyze match
+              </Button>
+              {running && (
+                <Button type="button" variant="outline" size="lg" onClick={cancel}>
                   <StopCircle className="mr-2 size-4" />
-                  Cancel analysis
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={!file || !jdValid}
-                  className="w-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
-                >
-                  <Sparkles className="mr-2 size-4" />
-                  Analyze match
+                  Cancel
                 </Button>
               )}
             </div>
@@ -349,8 +397,12 @@ function Dashboard() {
             primaryFile={file}
             secondaryFile={secondaryFile}
             onSecondaryFileChange={setSecondaryFile}
-            onCompare={() => compare.mutate()}
-            disabled={running || compare.isPending}
+            onCompare={() => {
+              if (!jdValid || isAnalyzing || running || compare.isPending) return;
+              startAnalysisPreview();
+              compare.mutate();
+            }}
+            disabled={isAnalyzing || running || compare.isPending}
             jdValid={jdValid}
           />
         </div>
@@ -361,8 +413,11 @@ function Dashboard() {
 
         {!current && (
           <AwaitingAnalysis
-            threshold={simulationThreshold}
-            onThresholdChange={setSimulationThreshold}
+            threshold={mockScore}
+            onThresholdChange={setMockScore}
+            isAnalyzing={isAnalyzing}
+            showMockData={showMockData}
+            loadingMessage={SIMULATION_STEPS[loadingStepIndex]}
           />
         )}
 
@@ -370,8 +425,8 @@ function Dashboard() {
           <SectionErrorBoundary label="Analysis results">
             <AnalysisCard
               result={current}
-              simulationThreshold={simulationThreshold}
-              onSimulationThresholdChange={setSimulationThreshold}
+              simulationThreshold={mockScore}
+              onSimulationThresholdChange={setMockScore}
             />
           </SectionErrorBoundary>
         )}
