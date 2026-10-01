@@ -40,9 +40,9 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background bg-mesh">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto mt-24 w-full max-w-md px-6">
-        <div className="glass rounded-2xl p-8 shadow-card">
+        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="font-display text-2xl font-semibold">Set a new password</h1>
           <p className="mt-1 text-sm text-muted-foreground">Choose a new password for your account.</p>
           <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
@@ -60,7 +60,7 @@ function ResetPasswordPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+              className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               {loading ? "Saving…" : "Update password"}
             </Button>

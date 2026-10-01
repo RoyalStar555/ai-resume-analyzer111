@@ -4,7 +4,7 @@ export function ComparisonMetric({ label, a, b }: { label: string; a: number; b:
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>{label}</span>
-        <span className="font-mono">A / B</span>
+        <span>A / B</span>
       </div>
       <div className="mt-3 flex items-end gap-3 font-display text-2xl font-bold">
         <span className={winner === "a" ? "text-success" : ""}>{a}%</span>

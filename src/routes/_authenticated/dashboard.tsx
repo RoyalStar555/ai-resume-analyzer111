@@ -1000,11 +1000,11 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
   return (
     <div className="space-y-6 pt-2">
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-        <h3 className="font-display text-xs font-semibold uppercase tracking-[0.25em] text-primary">
+        <div className="h-px flex-1 bg-slate-200" />
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Premium Tools & Extras
         </h3>
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <div className="h-px flex-1 bg-slate-200" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -1020,11 +1020,11 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
           score={portfolio?.score ?? 0}
           feedback={portfolio?.feedback ?? ""}
         />
-        <div className="glass rounded-2xl p-6 shadow-card">
-          <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <h4 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             <TrendingUp className="size-4" /> Estimated Market Salary
           </h4>
-          <p className="mt-3 break-words bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text font-display text-2xl font-bold text-transparent">
+          <p className="mt-3 break-words font-display text-2xl font-semibold text-emerald-700">
             {salary?.range || "—"}
           </p>
           <p className="mt-3 break-words text-xs leading-relaxed text-foreground/80">
@@ -1033,9 +1033,9 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
         </div>
       </div>
 
-      <div className="glass rounded-2xl p-6 shadow-card">
+      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h4 className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h4 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             <FileText className="size-4" /> AI Generated Cover Letter
           </h4>
           <Button size="sm" variant="outline" onClick={copyCover} disabled={!cover}>
@@ -1045,7 +1045,7 @@ function BonusFeaturesSection({ bonus }: { bonus: ResumeAnalysis["bonus_features
         <Textarea
           readOnly
           value={cover}
-          className="min-h-[260px] resize-y whitespace-pre-wrap bg-input/30 font-mono text-sm leading-relaxed"
+          className="min-h-[260px] resize-y whitespace-pre-wrap bg-slate-50 text-sm leading-relaxed"
           placeholder="Cover letter will appear here."
         />
       </div>
@@ -1065,8 +1065,8 @@ function BonusMetricCard({
   feedback: string;
 }) {
   return (
-    <div className="glass rounded-2xl p-6 shadow-card">
-      <h4 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <h4 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
         {icon} {title}
       </h4>
       <div className="mt-3 flex items-baseline gap-2">
