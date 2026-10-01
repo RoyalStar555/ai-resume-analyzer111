@@ -1125,10 +1125,10 @@ function Section({
   if (!items?.length) return null;
   const cls =
     tone === "primary"
-      ? "border-primary/30 bg-primary/10 text-primary"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
       : tone === "destructive"
-        ? "border-destructive/30 bg-destructive/10 text-destructive"
-        : "border-border bg-input/40 text-foreground";
+        ? "border-rose-200 bg-rose-50 text-rose-700"
+        : "border-slate-200 bg-slate-50 text-slate-700";
   return (
     <div>
       <h3 className="mb-2 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1136,7 +1136,7 @@ function Section({
       </h3>
       <div className="flex flex-wrap gap-2">
         {items.map((s, i) => (
-          <span key={i} className={`rounded-full border px-3 py-1 text-xs font-medium ${cls}`}>
+          <span key={i} className={`rounded-md border px-3 py-1 text-xs font-medium ${cls}`}>
             {s}
           </span>
         ))}
