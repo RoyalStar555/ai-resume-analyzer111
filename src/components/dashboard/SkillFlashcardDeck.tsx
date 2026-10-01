@@ -11,9 +11,9 @@ export function SkillFlashcardDeck({ skills }: { skills: string[] }) {
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-rose-600">
-          <BrainCircuit className="size-4 text-primary" /> Skill flashcards
+          <BrainCircuit className="size-4 text-rose-600" /> Skill gap analysis
         </h3>
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {(index % skills.length) + 1}/{skills.length}
         </span>
       </div>

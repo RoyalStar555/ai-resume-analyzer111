@@ -70,10 +70,10 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background bg-mesh">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-6">
         <Link to="/" className="inline-flex items-center gap-2">
-          <div className="grid size-9 place-items-center rounded-lg bg-gradient-primary shadow-glow">
+          <div className="grid size-8 place-items-center rounded-md bg-primary">
             <Sparkles className="size-5 text-primary-foreground" />
           </div>
           <span className="font-display text-lg font-semibold">ATS Lens</span>
@@ -81,7 +81,7 @@ function AuthPage() {
       </div>
 
       <div className="mx-auto mt-12 w-full max-w-md px-6">
-        <div className="glass rounded-2xl p-8 shadow-card">
+        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="font-display text-2xl font-semibold">
             {mode === "login" ? "Welcome back" : "Create your account"}
           </h1>
@@ -122,7 +122,7 @@ function AuthPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+              className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
             </Button>

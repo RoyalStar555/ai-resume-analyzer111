@@ -42,10 +42,11 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-background bg-mesh">
-      <header className="container mx-auto flex items-center justify-between px-6 py-6">
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="container mx-auto flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2">
-          <div className="grid size-9 place-items-center rounded-lg bg-gradient-primary shadow-glow">
+          <div className="grid size-8 place-items-center rounded-md bg-primary">
             <Sparkles className="size-5 text-primary-foreground" />
           </div>
           <span className="font-display text-lg font-semibold">ATS Lens</span>
@@ -53,6 +54,7 @@ function Landing() {
         <Link to="/auth">
           <Button variant="ghost">Sign in</Button>
         </Link>
+        </div>
       </header>
 
       <main className="container mx-auto px-6 pb-24 pt-12 md:pt-24">
@@ -63,7 +65,7 @@ function Landing() {
           </div>
           <h1 className="text-balance font-display text-5xl font-bold leading-[1.05] md:text-7xl">
             Beat the bots.<br />
-            <span className="text-gradient">Land the interview.</span>
+            <span className="text-emerald-700">Land the interview.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-balance text-base text-muted-foreground md:text-lg">
             Upload your resume and a job description. Get an instant ATS match score, the keywords
@@ -71,7 +73,7 @@ function Landing() {
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Link to="/auth">
-              <Button size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
+              <Button size="lg" className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
                 Analyze my resume
               </Button>
             </Link>
@@ -89,7 +91,7 @@ function Landing() {
             { icon: FileSearch, title: "Skill Gap Analysis", body: "See exactly which required skills are missing or weak." },
             { icon: Zap, title: "Tailored Rewrites", body: "AI-rewritten bullets with action verbs and quantified impact." },
           ].map((f) => (
-            <div key={f.title} className="glass rounded-2xl p-6 shadow-card">
+            <div key={f.title} className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
               <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
                 <f.icon className="size-5" />
               </div>
