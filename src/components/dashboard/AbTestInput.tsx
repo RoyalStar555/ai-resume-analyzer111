@@ -45,6 +45,7 @@ export function AbTestInput({
             type="file"
             accept="application/pdf"
             className="hidden"
+            disabled={disabled}
             onChange={(event) => onSecondaryFileChange(event.target.files?.[0] ?? null)}
           />
         </label>

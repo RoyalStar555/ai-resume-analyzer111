@@ -7,4 +7,4 @@
 - [x] Milestone 4: bounded AI retries and browser-only OCR fallback
 - [ ] Final: authenticated browser verification (blocked: no active preview session)
 - [x] Enterprise light-mode dashboard polish and awaiting-analysis state
-- [ ] Timed analysis preview, input locks, mock report resolution, and synchronized score slider
+- [x] Timed analysis preview, input locks, mock report resolution, and synchronized score slider
