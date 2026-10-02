@@ -47,10 +47,7 @@ export function AwaitingAnalysis({
           </p>
         </PreviewCard>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:col-span-2">
-          <h3 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            <FileText className="size-4" /> Tailored rewrites
-          </h3>
+        <PreviewCard title="Tailored rewrites" icon={<FileText className="size-4" />} isAnalyzing={isAnalyzing} showMockData={showMockData} loadingMessage={loadingMessage} className="md:col-span-2">
           <div className="mt-4 space-y-3">
             <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
               {showMockData ? "Built reusable React components for customer-facing product features." : "Original resume bullet appears here."}
@@ -60,7 +57,7 @@ export function AwaitingAnalysis({
               <p>{showMockData ? "Architected reusable React components that accelerated feature delivery by 30% across customer-facing workflows." : "AI-tailored, impact-focused rewrite appears after analysis."}</p>
             </div>
           </div>
-        </div>
+        </PreviewCard>
       </div>
 
       <SimulationSlider threshold={threshold} onThresholdChange={onThresholdChange} />
@@ -68,7 +65,7 @@ export function AwaitingAnalysis({
   );
 }
 
-function PreviewCard({ title, icon, rose, children, isAnalyzing, showMockData, loadingMessage }: {
+function PreviewCard({ title, icon, rose, children, isAnalyzing, showMockData, loadingMessage, className }: {
   title: string;
   icon: React.ReactNode;
   rose?: boolean;
@@ -76,9 +73,10 @@ function PreviewCard({ title, icon, rose, children, isAnalyzing, showMockData, l
   isAnalyzing: boolean;
   showMockData: boolean;
   loadingMessage: string;
+  className?: string;
 }) {
   return (
-    <div className="relative min-h-64 overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`relative min-h-64 overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm ${className ?? ""}`}>
       <div className={`pointer-events-none select-none ${showMockData ? "" : "blur-sm opacity-60"}`}>
         <h3 className={`flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider ${rose ? "text-rose-600" : "text-slate-500"}`}>
           {icon} {title}

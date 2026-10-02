@@ -230,6 +230,8 @@ function Dashboard() {
     },
     onError: (e: any) => {
       setStage(null);
+      setIsAnalyzing(false);
+      setShowMockData(false);
       abortRef.current = null;
       const msg = friendlyErrorMessage(e);
       if (msg === "Analysis canceled") {
@@ -290,6 +292,8 @@ function Dashboard() {
     },
     onError: (error: Error) => {
       setStage(null);
+      setIsAnalyzing(false);
+      setShowMockData(false);
       abortRef.current = null;
       const msg = friendlyErrorMessage(error);
       if (msg === "Analysis canceled") return toast("Comparison canceled");
@@ -396,7 +400,10 @@ function Dashboard() {
           <AbTestInput
             primaryFile={file}
             secondaryFile={secondaryFile}
-            onSecondaryFileChange={setSecondaryFile}
+            onSecondaryFileChange={(nextFile) => {
+              resetForInputChange();
+              setSecondaryFile(nextFile);
+            }}
             onCompare={() => {
               if (!jdValid || isAnalyzing || running || compare.isPending) return;
               startAnalysisPreview();
