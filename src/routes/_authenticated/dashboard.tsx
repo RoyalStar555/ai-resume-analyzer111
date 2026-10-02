@@ -239,7 +239,6 @@ function Dashboard() {
       if (showMockData) setCurrent(result);
       else setPendingResult({ result });
       setStage(null);
-      setIsAnalyzing(false);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
       toast.success(`Analysis complete — ${res.score}% match`);
@@ -308,7 +307,6 @@ function Dashboard() {
         setPendingResult({ result: variants[0], variants });
       }
       setStage(null);
-      setIsAnalyzing(false);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
       toast.success("A/B comparison complete");
