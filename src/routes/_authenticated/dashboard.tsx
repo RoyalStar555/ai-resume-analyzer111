@@ -141,6 +141,10 @@ function Dashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showMockData, setShowMockData] = useState(false);
   const [loadingStepIndex, setLoadingStepIndex] = useState(0);
+  const [pendingResult, setPendingResult] = useState<{
+    result: AnalysisResult;
+    variants?: [AnalysisResult, AnalysisResult];
+  } | null>(null);
   const [current, setCurrent] = useState<AnalysisResult | null>(null);
   const [secondaryFile, setSecondaryFile] = useState<File | null>(null);
   const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
@@ -166,6 +170,13 @@ function Dashboard() {
     };
   }, [isAnalyzing]);
 
+  useEffect(() => {
+    if (!showMockData || !pendingResult) return;
+    setCurrent(pendingResult.result);
+    if (pendingResult.variants) setAbVariants(pendingResult.variants);
+    setPendingResult(null);
+  }, [showMockData, pendingResult]);
+
   const resetForInputChange = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -175,6 +186,7 @@ function Dashboard() {
     setLoadingStepIndex(0);
     setCurrent(null);
     setAbVariants(null);
+    setPendingResult(null);
   };
 
   const startAnalysisPreview = () => {
@@ -183,6 +195,7 @@ function Dashboard() {
     setAbVariants(null);
     setLoadingStepIndex(0);
     setShowMockData(false);
+    setPendingResult(null);
     setIsAnalyzing(true);
   };
 
@@ -222,7 +235,8 @@ function Dashboard() {
     },
     onSuccess: (res) => {
       toast.dismiss();
-      setCurrent(res as AnalysisResult);
+      const result = res as AnalysisResult;
+      setPendingResult({ result });
       setStage(null);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
@@ -230,6 +244,9 @@ function Dashboard() {
     },
     onError: (e: any) => {
       setStage(null);
+      setIsAnalyzing(false);
+      setShowMockData(false);
+      setPendingResult(null);
       abortRef.current = null;
       const msg = friendlyErrorMessage(e);
       if (msg === "Analysis canceled") {
@@ -243,6 +260,7 @@ function Dashboard() {
   const compare = useMutation({
     mutationFn: async () => {
       if (!file || !secondaryFile) throw new Error("Choose two PDF resumes to compare.");
+      if (!jdValid) throw new Error("Please paste a job description (20+ chars).");
       const controller = new AbortController();
       abortRef.current = controller;
       setStage("parsing");
@@ -281,8 +299,7 @@ function Dashboard() {
     },
     onSuccess: (variants) => {
       toast.dismiss();
-      setAbVariants(variants);
-      setCurrent(variants[0]);
+      setPendingResult({ result: variants[0], variants });
       setStage(null);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
@@ -290,6 +307,9 @@ function Dashboard() {
     },
     onError: (error: Error) => {
       setStage(null);
+      setIsAnalyzing(false);
+      setShowMockData(false);
+      setPendingResult(null);
       abortRef.current = null;
       const msg = friendlyErrorMessage(error);
       if (msg === "Analysis canceled") return toast("Comparison canceled");
@@ -364,6 +384,7 @@ function Dashboard() {
                   type="file"
                   accept="application/pdf"
                   className="hidden"
+                  disabled={isAnalyzing || running}
                   onChange={(e) => {
                     resetForInputChange();
                     setFile(e.target.files?.[0] ?? null);
@@ -396,7 +417,10 @@ function Dashboard() {
           <AbTestInput
             primaryFile={file}
             secondaryFile={secondaryFile}
-            onSecondaryFileChange={setSecondaryFile}
+            onSecondaryFileChange={(nextFile) => {
+              resetForInputChange();
+              setSecondaryFile(nextFile);
+            }}
             onCompare={() => {
               if (!jdValid || isAnalyzing || running || compare.isPending) return;
               startAnalysisPreview();
