@@ -236,8 +236,7 @@ function Dashboard() {
     onSuccess: (res) => {
       toast.dismiss();
       const result = res as AnalysisResult;
-      if (showMockData) setCurrent(result);
-      else setPendingResult({ result });
+      setPendingResult({ result });
       setStage(null);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
@@ -300,12 +299,7 @@ function Dashboard() {
     },
     onSuccess: (variants) => {
       toast.dismiss();
-      if (showMockData) {
-        setAbVariants(variants);
-        setCurrent(variants[0]);
-      } else {
-        setPendingResult({ result: variants[0], variants });
-      }
+      setPendingResult({ result: variants[0], variants });
       setStage(null);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });
