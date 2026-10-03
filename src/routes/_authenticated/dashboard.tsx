@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
 import { EmptyPdfTextError, extractTextFromPdf } from "@/lib/pdf-parser";
 import {
   analyzeResume,
@@ -61,7 +62,11 @@ import { AbComparisonView } from "@/components/dashboard/AbComparisonView";
 import { AbTestInput } from "@/components/dashboard/AbTestInput";
 import { PercentileBellCurve } from "@/components/dashboard/PercentileBellCurve";
 import { SkillFlashcardDeck } from "@/components/dashboard/SkillFlashcardDeck";
-import { AwaitingAnalysis, SimulationSlider } from "@/components/dashboard/AwaitingAnalysis";
+import {
+  AwaitingAnalysis,
+  SimulationSlider,
+  type AnalysisPreviewData,
+} from "@/components/dashboard/AwaitingAnalysis";
 
 function friendlyErrorMessage(error: unknown): string {
   if (!error) return "Something went wrong. Please try again.";
@@ -87,7 +92,15 @@ function friendlyErrorMessage(error: unknown): string {
   return message;
 }
 
-type Stage = "parsing" | "scoring" | "analyzing" | "saving";
+type Stage = "parsing" | "scoring" | "analyzing" | "saving" | "uploading";
+const SAMPLE_ANALYSIS_PAYLOAD: AnalysisPreviewData = {
+  matchScore: 85,
+  missingSkills: ["GraphQL Architecture", "Docker Optimization"],
+  originalBullet: "Built reusable React components for customer-facing product features.",
+  bulletRewrites: [
+    "Architected reusable React components that accelerated feature delivery by 30% across customer-facing workflows.",
+  ],
+};
 const SIMULATION_STEPS = [
   "Extracting document text...",
   "Sanitizing PII data...",
@@ -95,6 +108,7 @@ const SIMULATION_STEPS = [
   "Drafting ATS rewrites...",
 ];
 const STAGES: { key: Stage; label: string }[] = [
+  { key: "uploading", label: "Uploading resume" },
   { key: "parsing", label: "Reading PDF" },
   { key: "scoring", label: "Computing ATS keyword score" },
   { key: "analyzing", label: "Analyzing with Gemini AI" },
@@ -149,6 +163,7 @@ function Dashboard() {
   const [secondaryFile, setSecondaryFile] = useState<File | null>(null);
   const [abVariants, setAbVariants] = useState<[AnalysisResult, AnalysisResult] | null>(null);
   const [mockScore, setMockScore] = useState(85);
+  const [analysisPreview, setAnalysisPreview] = useState<AnalysisPreviewData | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const jdValid = jd.trim().length >= 20;
@@ -187,6 +202,8 @@ function Dashboard() {
     setCurrent(null);
     setAbVariants(null);
     setPendingResult(null);
+    setAnalysisPreview(null);
+    setMockScore(85);
   };
 
   const startAnalysisPreview = () => {
@@ -196,13 +213,14 @@ function Dashboard() {
     setLoadingStepIndex(0);
     setShowMockData(false);
     setPendingResult(null);
+    setAnalysisPreview(null);
     setIsAnalyzing(true);
   };
 
   const history = useQuery({ queryKey: ["resumes"], queryFn: () => listFn() });
 
   const analyze = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<{ payload: AnalysisPreviewData; usedFallback: boolean }> => {
       if (!file) throw new Error("Please upload a PDF resume.");
       if (jd.trim().length < 20) throw new Error("Please paste a job description (20+ chars).");
 
@@ -212,35 +230,67 @@ function Dashboard() {
         if (controller.signal.aborted) throw new DOMException("Canceled", "AbortError");
       };
 
-      setStage("parsing");
-      const resumeText = await readResumeText(file, controller.signal);
-      throwIfAborted();
-      if (resumeText.length < 50) throw new Error("Couldn't extract text from this PDF.");
+      try {
+        setStage("uploading");
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError || !authData.user) throw authError ?? new Error("Sign in to analyze a resume.");
+        throwIfAborted();
 
-      setStage("scoring");
-      // brief pause so the user can see the stage transition
-      await new Promise((r) => setTimeout(r, 250));
-      throwIfAborted();
+        const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "resume.pdf";
+        const path = `${authData.user.id}/${crypto.randomUUID()}_${safeFilename}`;
+        const { error: uploadError } = await supabase.storage
+          .from("enterprise_ingestion_vault")
+          .upload(path, file, { contentType: file.type || "application/pdf", upsert: false });
+        if (uploadError) throw uploadError;
+        throwIfAborted();
 
-      setStage("analyzing");
-      const result = await analyzeFn({
-        data: { resumeText, jobDescription: jd, filename: file.name },
-        signal: controller.signal,
-      });
-      throwIfAborted();
+        setStage("analyzing");
+        const { data, error } = await supabase.functions.invoke("analyze-resume", {
+          body: { storage_path: path, job_description: jd },
+        });
+        if (error) throw error;
+        throwIfAborted();
 
-      setStage("saving");
-      await new Promise((r) => setTimeout(r, 150));
-      return result;
+        if (!data || typeof data.matchScore !== "number" || !Array.isArray(data.missingSkills)) {
+          throw new Error("The analysis service returned an invalid result.");
+        }
+        const rewrites = Array.isArray(data.bulletRewrites)
+          ? data.bulletRewrites.filter((item: unknown): item is string => typeof item === "string")
+          : typeof data.bulletRewrites === "string"
+            ? [data.bulletRewrites]
+            : [];
+        const missingSkills = data.missingSkills.filter(
+          (item: unknown): item is string => typeof item === "string",
+        );
+        if (!rewrites.length || missingSkills.length !== data.missingSkills.length) {
+          throw new Error("The analysis service returned an incomplete result.");
+        }
+        return {
+          payload: {
+            matchScore: Math.max(0, Math.min(100, Math.round(data.matchScore))),
+            missingSkills,
+            bulletRewrites: rewrites,
+          },
+          usedFallback: false,
+        };
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        return { payload: SAMPLE_ANALYSIS_PAYLOAD, usedFallback: true };
+      }
     },
-    onSuccess: (res) => {
+    onSuccess: ({ payload, usedFallback }) => {
       toast.dismiss();
-      const result = res as AnalysisResult;
-      setPendingResult({ result });
+      setAnalysisPreview(payload);
+      setMockScore(payload.matchScore);
+      setIsAnalyzing(false);
+      setShowMockData(true);
       setStage(null);
       abortRef.current = null;
-      qc.invalidateQueries({ queryKey: ["resumes"] });
-      toast.success(`Analysis complete — ${res.score}% match`);
+      if (usedFallback) {
+        toast.error("Analysis failed. Please verify your connection and try again.");
+      } else {
+        toast.success(`Analysis complete — ${payload.matchScore}% match`);
+      }
     },
     onError: (e: any) => {
       setStage(null);
@@ -442,6 +492,7 @@ function Dashboard() {
             isAnalyzing={isAnalyzing}
             showMockData={showMockData}
             loadingMessage={SIMULATION_STEPS[loadingStepIndex]}
+            analysisData={analysisPreview ?? undefined}
           />
         )}
 
