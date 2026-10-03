@@ -1,17 +1,26 @@
 import { Activity, FileText, ScanSearch } from "lucide-react";
 
+export type AnalysisPreviewData = {
+  matchScore: number;
+  missingSkills: string[];
+  originalBullet?: string;
+  bulletRewrites: string[];
+};
+
 export function AwaitingAnalysis({
   threshold,
   onThresholdChange,
   isAnalyzing,
   showMockData,
   loadingMessage,
+  analysisData,
 }: {
   threshold: number;
   onThresholdChange: (value: number) => void;
   isAnalyzing: boolean;
   showMockData: boolean;
   loadingMessage: string;
+  analysisData?: AnalysisPreviewData;
 }) {
   const curveX = 18 + Math.max(0, Math.min(100, threshold)) * 2.84;
   const curveY = 104 - 80 * Math.exp(-0.5 * ((threshold - 50) / 23) ** 2);
@@ -36,25 +45,25 @@ export function AwaitingAnalysis({
 
         <PreviewCard title="Skill gap analysis" icon={<ScanSearch className="size-4 text-rose-600" />} rose isAnalyzing={isAnalyzing} showMockData={showMockData} loadingMessage={loadingMessage}>
           <div className="flex flex-wrap gap-2 py-4">
-            {["GraphQL Architecture", "Docker Optimization"].map((skill) => (
+            {(analysisData?.missingSkills.length ? analysisData.missingSkills : ["GraphQL Architecture", "Docker Optimization"]).map((skill) => (
               <span key={skill} className="rounded-md border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
                 {skill}
               </span>
             ))}
           </div>
           <p className="border-t border-slate-100 pt-4 text-xs font-medium text-rose-600">
-            Missing requirements detected: 2
+            Missing requirements detected: {analysisData?.missingSkills.length ?? 2}
           </p>
         </PreviewCard>
 
         <PreviewCard title="Tailored rewrites" icon={<FileText className="size-4" />} isAnalyzing={isAnalyzing} showMockData={showMockData} loadingMessage={loadingMessage} className="md:col-span-2">
           <div className="mt-4 space-y-3">
             <div className="rounded-lg border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
-              {showMockData ? "Built reusable React components for customer-facing product features." : "Original resume bullet appears here."}
+              {showMockData ? analysisData?.originalBullet ?? "Built reusable React components for customer-facing product features." : "Original resume bullet appears here."}
             </div>
             <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-900">
               <span className="mb-2 inline-flex rounded bg-emerald-100 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-700">ATS optimized</span>
-              <p>{showMockData ? "Architected reusable React components that accelerated feature delivery by 30% across customer-facing workflows." : "AI-tailored, impact-focused rewrite appears after analysis."}</p>
+              <p>{showMockData ? analysisData?.bulletRewrites[0] ?? "Architected reusable React components that accelerated feature delivery by 30% across customer-facing workflows." : "AI-tailored, impact-focused rewrite appears after analysis."}</p>
             </div>
           </div>
         </PreviewCard>
