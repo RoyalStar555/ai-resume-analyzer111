@@ -5,8 +5,8 @@
 - [x] Milestone 2: market percentile state and adaptive skill flashcards
 - [x] Milestone 3: multi-resume A/B testing flow and comparison view
 - [x] Milestone 4: bounded AI retries and browser-only OCR fallback
-- [ ] Final: authenticated browser verification (blocked: no active preview session)
+- [x] Final: authenticated browser verification of the dashboard and preserved input validation
 - [x] Enterprise light-mode dashboard polish and awaiting-analysis state
 - [x] Timed analysis preview, input locks, mock report resolution, and synchronized score slider
 - [x] Live resume upload and analyzer invocation with graceful sample-result fallback
-- [ ] Final: authenticated upload-to-fallback browser verification (blocked: active preview session unavailable)
+- [x] Final: authenticated upload-to-fallback browser verification (live function deployment remains external)
