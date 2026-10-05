@@ -118,7 +118,7 @@ export function SimulationSlider({ threshold, onThresholdChange }: { threshold: 
       </div>
       <input
         type="range"
-        min="50"
+        min="0"
         max="100"
         value={threshold}
         onChange={(event) => onThresholdChange(Number(event.target.value))}
