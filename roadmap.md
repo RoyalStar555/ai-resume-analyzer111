@@ -9,3 +9,4 @@
 - [x] Enterprise light-mode dashboard polish and awaiting-analysis state
 - [x] Timed analysis preview, input locks, mock report resolution, and synchronized score slider
 - [x] Live resume upload and analyzer invocation with graceful sample-result fallback
+- [ ] Final: authenticated upload-to-fallback browser verification (blocked: active preview session unavailable)

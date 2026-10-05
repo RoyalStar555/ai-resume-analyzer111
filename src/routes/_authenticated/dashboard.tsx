@@ -306,7 +306,9 @@ function Dashboard() {
       setShowMockData(false);
       setPendingResult(null);
       abortRef.current = null;
-      const msg = friendlyErrorMessage(e);
+      const msg = e?.name === "AbortError"
+        ? "Analysis canceled"
+        : "Analysis failed. Please verify your connection and try again.";
       if (msg === "Analysis canceled") {
         toast(msg);
         return;
