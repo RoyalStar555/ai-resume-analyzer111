@@ -174,14 +174,9 @@ function Dashboard() {
     const intervalId = window.setInterval(() => {
       setLoadingStepIndex((index) => (index + 1) % SIMULATION_STEPS.length);
     }, 1200);
-    const timeoutId = window.setTimeout(() => {
-      setIsAnalyzing(false);
-      setShowMockData(true);
-    }, 4800);
 
     return () => {
       window.clearInterval(intervalId);
-      window.clearTimeout(timeoutId);
     };
   }, [isAnalyzing]);
 
@@ -350,6 +345,8 @@ function Dashboard() {
     onSuccess: (variants) => {
       toast.dismiss();
       setPendingResult({ result: variants[0], variants });
+      setIsAnalyzing(false);
+      setShowMockData(true);
       setStage(null);
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["resumes"] });

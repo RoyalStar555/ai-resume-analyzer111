@@ -31,7 +31,7 @@ export function AwaitingAnalysis({
         <PreviewCard title="ATS match profile" icon={<Activity className="size-4" />} isAnalyzing={isAnalyzing} showMockData={showMockData} loadingMessage={loadingMessage}>
           <div className="flex items-end justify-between border-b border-slate-100 pb-4">
             <div className="h-3 w-24 rounded bg-slate-100" />
-            <span className="text-4xl font-medium text-emerald-600">{threshold}</span>
+            <span className="text-4xl font-medium text-emerald-600">{analysisData?.matchScore ?? threshold}</span>
           </div>
           <svg viewBox="0 0 320 120" className="mt-4 h-28 w-full" aria-hidden="true">
             <path d="M18 104 C82 104 89 24 160 24 C231 24 238 104 302 104 L302 110 L18 110 Z" fill="var(--color-emerald-50)" />
