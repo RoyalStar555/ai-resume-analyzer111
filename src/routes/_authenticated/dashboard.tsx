@@ -263,20 +263,21 @@ function Dashboard() {
         ) {
           throw new Error("The analysis service returned an invalid result.");
         }
-        const rewrites = Array.isArray(data.bulletRewrites)
-          ? data.bulletRewrites.filter((item: unknown): item is string => typeof item === "string")
-          : typeof data.bulletRewrites === "string"
-            ? [data.bulletRewrites]
+        const resultData = data as Record<string, unknown>;
+        const rewrites = Array.isArray(resultData.bulletRewrites)
+          ? resultData.bulletRewrites.filter((item: unknown): item is string => typeof item === "string")
+          : typeof resultData.bulletRewrites === "string"
+            ? [resultData.bulletRewrites]
             : [];
-        const missingSkills = data.missingSkills.filter(
+        const missingSkills = (resultData.missingSkills as unknown[]).filter(
           (item: unknown): item is string => typeof item === "string",
         );
-        if (!rewrites.length || missingSkills.length !== data.missingSkills.length) {
+        if (!rewrites.length || missingSkills.length !== (resultData.missingSkills as unknown[]).length) {
           throw new Error("The analysis service returned an incomplete result.");
         }
         return {
           payload: {
-            matchScore: Math.max(0, Math.min(100, Math.round(data.matchScore))),
+            matchScore: Math.max(0, Math.min(100, Math.round(resultData.matchScore as number))),
             missingSkills,
             bulletRewrites: rewrites,
           },
