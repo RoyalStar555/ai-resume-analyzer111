@@ -240,13 +240,27 @@ function Dashboard() {
         throwIfAborted();
 
         setStage("analyzing");
-        const { data, error } = await supabase.functions.invoke("analyze-resume", {
-          body: { storage_path: path, job_description: jd },
-        });
-        if (error) throw error;
+        let data: unknown;
+        try {
+          const response = await supabase.functions.invoke("analyze-resume", {
+            body: { storage_path: path, job_description: jd },
+          });
+          if (response.error) throw response.error;
+          data = response.data;
+        } catch (error) {
+          if (controller.signal.aborted) throw error;
+          return { payload: SAMPLE_ANALYSIS_PAYLOAD, usedFallback: true };
+        }
         throwIfAborted();
 
-        if (!data || typeof data.matchScore !== "number" || !Array.isArray(data.missingSkills)) {
+        if (
+          !data ||
+          typeof data !== "object" ||
+          !("matchScore" in data) ||
+          typeof data.matchScore !== "number" ||
+          !("missingSkills" in data) ||
+          !Array.isArray(data.missingSkills)
+        ) {
           throw new Error("The analysis service returned an invalid result.");
         }
         const rewrites = Array.isArray(data.bulletRewrites)
@@ -269,8 +283,7 @@ function Dashboard() {
           usedFallback: false,
         };
       } catch (error) {
-        if (controller.signal.aborted) throw error;
-        return { payload: SAMPLE_ANALYSIS_PAYLOAD, usedFallback: true };
+        throw error;
       }
     },
     onSuccess: ({ payload, usedFallback }) => {
