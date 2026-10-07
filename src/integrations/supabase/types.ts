@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      analyses: {
+        Row: {
+          id: string
+          job_description: string
+          parsed_profile: Json | null
+          resume_storage_path: string | null
+          score_matrix: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          job_description: string
+          parsed_profile?: Json | null
+          resume_storage_path?: string | null
+          score_matrix?: Json | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          job_description?: string
+          parsed_profile?: Json | null
+          resume_storage_path?: string | null
+          score_matrix?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          id: string
+          name: string
+        }
+        Insert: {
+          id?: string
+          name: string
+        }
+        Update: {
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       resume_ab_tests: {
         Row: {
           created_at: string
@@ -121,6 +166,32 @@ export type Database = {
           source?: string | null
         }
         Relationships: []
+      }
+      user_roles: {
+        Row: {
+          org_id: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          org_id?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          org_id?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

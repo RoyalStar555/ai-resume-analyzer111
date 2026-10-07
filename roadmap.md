@@ -10,3 +10,7 @@
 - [x] Timed analysis preview, input locks, mock report resolution, and synchronized score slider
 - [x] Live resume upload and analyzer invocation with graceful sample-result fallback
 - [x] Final: authenticated upload-to-fallback browser verification (live function deployment remains external)
+- [ ] Phase 1: create organization, user-role, and analysis tables with owner-scoped RLS and protected candidate self-healing
+- [ ] Phase 1: add cookie-verified server identity and role resolution; preserve local client session compatibility
+- [ ] Phase 1: add login redirect and protected recruiter/admin placeholder routes
+- [ ] Phase 1: add dashboard timer/abort cleanup without changing analysis UI
