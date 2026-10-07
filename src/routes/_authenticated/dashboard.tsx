@@ -93,6 +93,25 @@ function friendlyErrorMessage(error: unknown): string {
 }
 
 type Stage = "parsing" | "scoring" | "analyzing" | "saving" | "uploading";
+function abortableDelay(milliseconds: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Canceled", "AbortError"));
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      reject(new DOMException("Canceled", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 const SAMPLE_ANALYSIS_PAYLOAD: AnalysisPreviewData = {
   matchScore: 85,
   missingSkills: ["GraphQL Architecture", "Docker Optimization"],
@@ -165,6 +184,7 @@ function Dashboard() {
   const [mockScore, setMockScore] = useState(85);
   const [analysisPreview, setAnalysisPreview] = useState<AnalysisPreviewData | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(false);
 
   const jdValid = jd.trim().length >= 20;
 
@@ -179,6 +199,15 @@ function Dashboard() {
       window.clearInterval(intervalId);
     };
   }, [isAnalyzing]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!showMockData || !pendingResult) return;
@@ -288,6 +317,7 @@ function Dashboard() {
       }
     },
     onSuccess: ({ payload, usedFallback }) => {
+      if (!mountedRef.current) return;
       toast.dismiss();
       setAnalysisPreview(payload);
       setMockScore(payload.matchScore);
@@ -302,6 +332,7 @@ function Dashboard() {
       }
     },
     onError: (e: any) => {
+      if (!mountedRef.current) return;
       setStage(null);
       setIsAnalyzing(false);
       setShowMockData(false);
@@ -331,7 +362,7 @@ function Dashboard() {
       ]);
       if (controller.signal.aborted) throw new DOMException("Canceled", "AbortError");
       setStage("scoring");
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      await abortableDelay(250, controller.signal);
       setStage("analyzing");
       const test = await createAbTestFn({ data: { jobDescription: jd } });
       const variantA = await analyzeFn({
@@ -355,10 +386,11 @@ function Dashboard() {
         signal: controller.signal,
       });
       setStage("saving");
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await abortableDelay(150, controller.signal);
       return [variantA, variantB] as [AnalysisResult, AnalysisResult];
     },
     onSuccess: (variants) => {
+      if (!mountedRef.current) return;
       toast.dismiss();
       setPendingResult({ result: variants[0], variants });
       setIsAnalyzing(false);
@@ -369,6 +401,7 @@ function Dashboard() {
       toast.success("A/B comparison complete");
     },
     onError: (error: Error) => {
+      if (!mountedRef.current) return;
       setStage(null);
       setIsAnalyzing(false);
       setShowMockData(false);

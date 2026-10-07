@@ -1,161 +1,19 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/auth")({
+  beforeLoad: () => {
+    throw redirect({ to: "/login" });
+  },
   head: () => ({
     meta: [
-      { title: "Sign in or create an account — ATS Lens" },
-      {
-        name: "description",
-        content:
-          "Sign in to ATS Lens or create a free account to analyze your resume against any job description with AI.",
-      },
+      { title: "Sign in — ATS Lens" },
+      { name: "description", content: "Continue to the ATS Lens sign-in page." },
       { property: "og:title", content: "Sign in — ATS Lens" },
-      { property: "og:description", content: "Access your AI resume optimizer dashboard." },
-      { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/auth" },
+      { property: "og:description", content: "Continue to the ATS Lens sign-in page." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
-    links: [{ rel: "canonical", href: "https://ai-resume-analyzer111.lovable.app/auth" }],
   }),
-  component: AuthPage,
+  component: () => null,
 });
-
-function AuthPage() {
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
-    });
-  }, [navigate]);
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { name },
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created. Welcome!");
-        navigate({ to: "/dashboard" });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Welcome back.");
-        navigate({ to: "/dashboard" });
-      }
-    } catch (err: any) {
-      toast.error(err.message ?? "Authentication failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-6">
-        <Link to="/" className="inline-flex items-center gap-2">
-          <div className="grid size-8 place-items-center rounded-md bg-primary">
-            <Sparkles className="size-5 text-primary-foreground" />
-          </div>
-          <span className="font-display text-lg font-semibold">ATS Lens</span>
-        </Link>
-      </div>
-
-      <div className="mx-auto mt-12 w-full max-w-md px-6">
-        <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="font-display text-2xl font-semibold">
-            {mode === "login" ? "Welcome back" : "Create your account"}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "login" ? "Sign in to access your analyses." : "Start optimizing in seconds."}
-          </p>
-
-          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
-            {mode === "signup" && (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="name">Full name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-            )}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-            >
-              {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
-            </Button>
-            {mode === "login" && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!email) return toast.error("Enter your email first");
-                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/reset-password`,
-                  });
-                  if (error) toast.error(error.message);
-                  else toast.success("Password reset link sent. Check your email.");
-                }}
-                className="-mt-2 self-end text-xs text-primary underline-offset-4 hover:underline"
-              >
-                Forgot password?
-              </button>
-            )}
-          </form>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            {mode === "login" ? "New here?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="text-primary underline-offset-4 hover:underline"
-            >
-              {mode === "login" ? "Create an account" : "Sign in"}
-            </button>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
