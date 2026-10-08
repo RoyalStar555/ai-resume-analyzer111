@@ -27,12 +27,8 @@ function parseRequestCookies(cookieHeader: string | null) {
   });
 }
 
-function createRequestSupabase() {
+function createRequestSupabase(url: string, key: string) {
   const request = getRequest();
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  if (!url || !key) throw new Error("Cloud authentication is not configured.");
-
   return createServerClient<Database>(url, key, {
     cookies: {
       getAll: () => parseRequestCookies(request.headers.get("cookie")),
@@ -83,7 +79,10 @@ async function resolveIdentity(supabase: SupabaseClient<Database>): Promise<Serv
 }
 
 export const getServerIdentity = createServerFn({ method: "GET" }).handler(async () => {
-  return resolveIdentity(createRequestSupabase());
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  return resolveIdentity(createRequestSupabase(url, key));
 });
 
 export const establishServerSession = createServerFn({ method: "POST" })
@@ -94,7 +93,10 @@ export const establishServerSession = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const supabase = createRequestSupabase();
+    const url = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) throw new Error("Cloud authentication is not configured.");
+    const supabase = createRequestSupabase(url, key);
     const { error } = await supabase.auth.setSession({
       access_token: data.accessToken,
       refresh_token: data.refreshToken,
@@ -106,7 +108,10 @@ export const establishServerSession = createServerFn({ method: "POST" })
   });
 
 export const clearServerSession = createServerFn({ method: "POST" }).handler(async () => {
-  const supabase = createRequestSupabase();
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  const supabase = createRequestSupabase(url, key);
   const { error } = await supabase.auth.signOut();
   if (error) throw new Error("Unable to securely end the server session.");
   return { ok: true };

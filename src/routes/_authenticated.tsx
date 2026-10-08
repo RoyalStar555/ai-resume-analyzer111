@@ -32,7 +32,7 @@ function AuthedLayout() {
     await supabase.auth.signOut();
     toast.dismiss();
     toast.success("Signed out");
-    navigate({ to: "/login", replace: true });
+    navigate({ to: "/login", search: { redirect: undefined }, replace: true });
   };
   return (
     <div className="min-h-screen bg-background">

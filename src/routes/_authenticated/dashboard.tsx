@@ -148,6 +148,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
         property: "og:description",
         content: "Run an AI ATS analysis on your resume against any job description.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/dashboard" },
       { name: "robots", content: "noindex" },
     ],
@@ -273,6 +275,7 @@ function Dashboard() {
         try {
           const response = await supabase.functions.invoke("analyze-resume", {
             body: { storage_path: path, job_description: jd },
+            signal: controller.signal,
           });
           if (response.error) throw response.error;
           data = response.data;
