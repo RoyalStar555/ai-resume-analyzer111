@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { getServerIdentity } from "@/lib/identity.functions";
@@ -20,9 +21,10 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthedLayout() {
   const navigate = useNavigate();
   const { user } = Route.useRouteContext();
+  const clearServerSessionFn = useServerFn(clearServerSession);
   const signOut = async () => {
     try {
-      await clearServerSession();
+      await clearServerSessionFn();
     } catch {
       toast.error("Could not securely sign out. Please try again.");
       return;

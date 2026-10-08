@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest, setCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type ServerIdentity = {
@@ -45,8 +46,7 @@ function createRequestSupabase() {
   });
 }
 
-async function resolveIdentity(): Promise<ServerIdentity | null> {
-  const supabase = createRequestSupabase();
+async function resolveIdentity(supabase: SupabaseClient<Database>): Promise<ServerIdentity | null> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
 
@@ -83,7 +83,7 @@ async function resolveIdentity(): Promise<ServerIdentity | null> {
 }
 
 export const getServerIdentity = createServerFn({ method: "GET" }).handler(async () => {
-  return resolveIdentity();
+  return resolveIdentity(createRequestSupabase());
 });
 
 export const establishServerSession = createServerFn({ method: "POST" })
@@ -100,7 +100,7 @@ export const establishServerSession = createServerFn({ method: "POST" })
       refresh_token: data.refreshToken,
     });
     if (error) throw new Error("Unable to establish a secure sign-in session.");
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(supabase);
     if (!identity) throw new Error("Unable to verify the signed-in account.");
     return identity;
   });
