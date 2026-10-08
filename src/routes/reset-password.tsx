@@ -16,6 +16,8 @@ export const Route = createFileRoute("/reset-password")({
       },
       { property: "og:title", content: "Reset password — ATS Lens" },
       { property: "og:description", content: "Set a new password for your ATS Lens account." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/reset-password" },
       { name: "robots", content: "noindex" },
     ],

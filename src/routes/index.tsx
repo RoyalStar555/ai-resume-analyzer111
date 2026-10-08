@@ -18,6 +18,8 @@ export const Route = createFileRoute("/")({
           "Instant ATS match score, missing keywords, and AI-tailored bullet rewrites for your resume.",
       },
       { property: "og:url", content: "https://ai-resume-analyzer111.lovable.app/" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://ai-resume-analyzer111.lovable.app/" }],
     scripts: [

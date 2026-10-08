@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, BarChart3, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,10 +34,30 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const { redirect: redirectPath } = Route.useSearch();
+  const establishSessionFn = useServerFn(establishServerSession);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const session = data.session;
+      if (!session || cancelled) return;
+      try {
+        await establishSessionFn({
+          data: { accessToken: session.access_token, refreshToken: session.refresh_token },
+        });
+        if (!cancelled) await navigate({ to: "/dashboard" });
+      } catch {
+        // Keep the sign-in form available if an old browser session cannot be renewed.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [establishSessionFn, navigate]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,14 +71,14 @@ function LoginPage() {
           setIsCreatingAccount(false);
           return;
         }
-        await establishServerSession({
+        await establishSessionFn({
           data: { accessToken: data.session.access_token, refreshToken: data.session.refresh_token },
         });
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (!data.session) throw new Error("Sign-in did not create a session.");
-        await establishServerSession({
+        await establishSessionFn({
           data: { accessToken: data.session.access_token, refreshToken: data.session.refresh_token },
         });
       }
@@ -108,6 +129,25 @@ function LoginPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" autoComplete={isCreatingAccount ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
+                {!isCreatingAccount && (
+                  <button
+                    type="button"
+                    className="mt-1 self-end text-xs font-medium text-primary underline-offset-4 hover:underline"
+                    onClick={async () => {
+                      if (!email) {
+                        toast.error("Enter your email first.");
+                        return;
+                      }
+                      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: `${window.location.origin}/reset-password`,
+                      });
+                      if (error) toast.error(error.message);
+                      else toast.success("Password reset link sent. Check your email.");
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
               <Button type="submit" disabled={loading} className="mt-1 w-full">
                 {loading ? "Please wait…" : isCreatingAccount ? "Create account" : "Sign in"}

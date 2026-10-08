@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest, setCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type ServerIdentity = {
@@ -26,12 +27,8 @@ function parseRequestCookies(cookieHeader: string | null) {
   });
 }
 
-function createRequestSupabase() {
+function createRequestSupabase(url: string, key: string) {
   const request = getRequest();
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  if (!url || !key) throw new Error("Cloud authentication is not configured.");
-
   return createServerClient<Database>(url, key, {
     cookies: {
       getAll: () => parseRequestCookies(request.headers.get("cookie")),
@@ -45,8 +42,7 @@ function createRequestSupabase() {
   });
 }
 
-async function resolveIdentity(): Promise<ServerIdentity | null> {
-  const supabase = createRequestSupabase();
+async function resolveIdentity(supabase: SupabaseClient<Database>): Promise<ServerIdentity | null> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
 
@@ -66,7 +62,20 @@ async function resolveIdentity(): Promise<ServerIdentity | null> {
       .select("role, org_id")
       .single();
     if (insertError || !insertedRole) {
-      throw new Error("Unable to initialize your account permissions.");
+      // Concurrent requests can both observe no row; read the row created by the winner.
+      const { data: recoveredRole, error: recoveryError } = await supabase
+        .from("user_roles")
+        .select("role, org_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (recoveryError || !recoveredRole) {
+        throw new Error("Unable to initialize your account permissions.");
+      }
+      return {
+        user: { id: user.id, email: user.email ?? null },
+        role: recoveredRole.role,
+        orgId: recoveredRole.org_id,
+      };
     }
     return {
       user: { id: user.id, email: user.email ?? null },
@@ -83,7 +92,10 @@ async function resolveIdentity(): Promise<ServerIdentity | null> {
 }
 
 export const getServerIdentity = createServerFn({ method: "GET" }).handler(async () => {
-  return resolveIdentity();
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  return resolveIdentity(createRequestSupabase(url, key));
 });
 
 export const establishServerSession = createServerFn({ method: "POST" })
@@ -94,19 +106,25 @@ export const establishServerSession = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const supabase = createRequestSupabase();
+    const url = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) throw new Error("Cloud authentication is not configured.");
+    const supabase = createRequestSupabase(url, key);
     const { error } = await supabase.auth.setSession({
       access_token: data.accessToken,
       refresh_token: data.refreshToken,
     });
     if (error) throw new Error("Unable to establish a secure sign-in session.");
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(supabase);
     if (!identity) throw new Error("Unable to verify the signed-in account.");
     return identity;
   });
 
 export const clearServerSession = createServerFn({ method: "POST" }).handler(async () => {
-  const supabase = createRequestSupabase();
+  const url = process.env["SUPABASE_URL"];
+  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+  if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  const supabase = createRequestSupabase(url, key);
   const { error } = await supabase.auth.signOut();
   if (error) throw new Error("Unable to securely end the server session.");
   return { ok: true };
