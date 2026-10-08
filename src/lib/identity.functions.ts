@@ -62,7 +62,20 @@ async function resolveIdentity(supabase: SupabaseClient<Database>): Promise<Serv
       .select("role, org_id")
       .single();
     if (insertError || !insertedRole) {
-      throw new Error("Unable to initialize your account permissions.");
+      // Concurrent requests can both observe no row; read the row created by the winner.
+      const { data: recoveredRole, error: recoveryError } = await supabase
+        .from("user_roles")
+        .select("role, org_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (recoveryError || !recoveredRole) {
+        throw new Error("Unable to initialize your account permissions.");
+      }
+      return {
+        user: { id: user.id, email: user.email ?? null },
+        role: recoveredRole.role,
+        orgId: recoveredRole.org_id,
+      };
     }
     return {
       user: { id: user.id, email: user.email ?? null },
