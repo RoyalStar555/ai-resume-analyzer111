@@ -64,7 +64,11 @@ function LoginPage() {
     setLoading(true);
     try {
       if (isCreatingAccount) {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/login` },
+        });
         if (error) throw error;
         if (!data.session) {
           toast.success("Check your email to confirm your account, then sign in.");
@@ -94,20 +98,20 @@ function LoginPage() {
 
   return (
     <main className="grid min-h-screen bg-slate-50 lg:grid-cols-2">
-      <section className="hidden flex-col justify-between bg-slate-900 p-12 text-white lg:flex xl:p-16">
+      <section className="hidden flex-col justify-between border-r border-slate-200 bg-slate-100 p-12 text-slate-900 lg:flex xl:p-16">
         <Link to="/" className="inline-flex w-fit items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-md bg-white/10"><BarChart3 className="size-5" /></span>
+          <span className="grid size-10 place-items-center rounded-md border border-slate-200 bg-white"><BarChart3 className="size-5 text-primary" /></span>
           <span className="font-display text-lg font-semibold">ATS Lens</span>
         </Link>
         <div className="max-w-xl py-16">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">Resume intelligence</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resume intelligence</p>
           <h1 className="mt-5 font-display text-4xl font-semibold leading-tight">Make every application count.</h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-slate-300">A clear, consistent view of how your experience maps to the role ahead.</p>
-          <div className="mt-10 flex items-center gap-3 border-t border-white/15 pt-5 text-sm text-slate-200">
-            <ShieldCheck className="size-5 text-emerald-300" /> Private workspace with account-scoped access
+          <p className="mt-5 max-w-md text-base leading-7 text-slate-600">A clear, consistent view of how your experience maps to the role ahead.</p>
+          <div className="mt-10 flex items-center gap-3 border-t border-slate-200 pt-5 text-sm text-slate-700">
+            <ShieldCheck className="size-5 text-emerald-700" /> Private workspace with account-scoped access
           </div>
         </div>
-        <p className="text-xs text-slate-400">ATS Lens · Enterprise workspace</p>
+        <p className="text-xs text-slate-500">ATS Lens · Enterprise workspace</p>
       </section>
 
       <section className="flex items-center justify-center px-5 py-12 sm:px-8">
@@ -167,7 +171,8 @@ function LoginPage() {
   );
 }
 
-function safeDestination(value: string | undefined): "/dashboard" {
-  if (value?.startsWith("/dashboard") && !value.startsWith("//")) return "/dashboard";
+function safeDestination(value: string | undefined): "/dashboard" | "/recruiter" | "/admin" {
+  if (value === "/recruiter" || value?.startsWith("/recruiter/")) return "/recruiter";
+  if (value === "/admin" || value?.startsWith("/admin/")) return "/admin";
   return "/dashboard";
 }

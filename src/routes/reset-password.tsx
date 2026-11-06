@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { establishServerSession } from "@/lib/identity.functions";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const establishSessionFn = useServerFn(establishServerSession);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +40,19 @@ function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) return toast.error(error.message);
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session) {
+      try {
+        await establishSessionFn({
+          data: {
+            accessToken: sessionData.session.access_token,
+            refreshToken: sessionData.session.refresh_token,
+          },
+        });
+      } catch {
+        return toast.error("Password updated, but your secure session could not be started. Please sign in.");
+      }
+    }
     toast.success("Password updated. You're signed in.");
     navigate({ to: "/dashboard" });
   };
