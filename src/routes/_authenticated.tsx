@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthedLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = Route.useRouteContext();
+  const { user, role } = Route.useRouteContext();
   const clearServerSessionFn = useServerFn(clearServerSession);
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -52,12 +52,16 @@ function AuthedLayout() {
             <Button asChild variant="ghost" size="sm">
               <Link to="/dashboard"><BarChart3 className="mr-2 size-4" />Dashboard</Link>
             </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/recruiter"><Users className="mr-2 size-4" />Recruiter</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin"><Shield className="mr-2 size-4" />Admin</Link>
-            </Button>
+            {(role === "recruiter" || role === "admin") && (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/recruiter"><Users className="mr-2 size-4" />Recruiter</Link>
+              </Button>
+            )}
+            {role === "admin" && (
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin"><Shield className="mr-2 size-4" />Admin</Link>
+              </Button>
+            )}
           </nav>
           <div className="order-2 flex items-center gap-3 sm:order-3">
             <span className="hidden max-w-48 truncate text-xs text-muted-foreground sm:block">{user.email}</span>
