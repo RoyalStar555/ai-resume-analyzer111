@@ -167,7 +167,8 @@ function LoginPage() {
   );
 }
 
-function safeDestination(value: string | undefined): "/dashboard" {
-  if (value?.startsWith("/dashboard") && !value.startsWith("//")) return "/dashboard";
+function safeDestination(value: string | undefined): "/dashboard" | "/recruiter" | "/admin" {
+  if (value === "/recruiter" || value?.startsWith("/recruiter/")) return "/recruiter";
+  if (value === "/admin" || value?.startsWith("/admin/")) return "/admin";
   return "/dashboard";
 }
