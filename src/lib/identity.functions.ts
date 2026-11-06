@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest, setCookie, setResponseHeader } from "@tanstack/react-start/server";
+import { deleteCookie, getRequest, setCookie, setResponseHeader } from "@tanstack/react-start/server";
 import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -29,14 +29,20 @@ function parseRequestCookies(cookieHeader: string | null) {
 
 function createRequestSupabase(url: string, key: string) {
   const request = getRequest();
+  setResponseHeader("Cache-Control", "private, no-store");
   return createServerClient<Database>(url, key, {
     cookies: {
       getAll: () => parseRequestCookies(request.headers.get("cookie")),
       setAll: (cookies) => {
         for (const { name, value, options } of cookies) {
-          setCookie(name, value, options);
+          setCookie(name, value, {
+            ...options,
+            httpOnly: true,
+            secure: new URL(request.url).protocol === "https:",
+            sameSite: "lax",
+            path: "/",
+          });
         }
-        setResponseHeader("Cache-Control", "private, no-store");
       },
     },
   });
@@ -124,8 +130,13 @@ export const clearServerSession = createServerFn({ method: "POST" }).handler(asy
   const url = process.env["SUPABASE_URL"];
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  const request = getRequest();
   const supabase = createRequestSupabase(url, key);
-  const { error } = await supabase.auth.signOut();
-  if (error) throw new Error("Unable to securely end the server session.");
+  await supabase.auth.signOut();
+  for (const { name } of parseRequestCookies(request.headers.get("cookie"))) {
+    if (name.startsWith("sb-") && name.includes("auth-token")) {
+      deleteCookie(name, { path: "/", sameSite: "lax" });
+    }
+  }
   return { ok: true };
 });
