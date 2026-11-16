@@ -48,8 +48,24 @@ function createRequestSupabase(url: string, key: string) {
   });
 }
 
+function resolveCloudConfig() {
+  const url =
+    process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    console.error("Supabase Auth Error:", `Missing config (url: ${Boolean(url)}, key: ${Boolean(key)})`);
+    throw new Error("Cloud authentication is not configured.");
+  }
+  return { url: url as string, key: key as string };
+}
+
 async function resolveIdentity(supabase: SupabaseClient<Database>): Promise<ServerIdentity | null> {
   const { data, error } = await supabase.auth.getUser();
+  if (error) console.error("Supabase Auth Error:", error.message);
   if (error || !data.user) return null;
 
   const user = data.user;
@@ -98,28 +114,25 @@ async function resolveIdentity(supabase: SupabaseClient<Database>): Promise<Serv
 }
 
 export const getServerIdentity = createServerFn({ method: "GET" }).handler(async () => {
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  const { url, key } = resolveCloudConfig();
   return resolveIdentity(createRequestSupabase(url, key));
 });
 
 export const establishServerSession = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       accessToken: z.string().min(1),
       refreshToken: z.string().min(1),
     }),
   )
   .handler(async ({ data }) => {
-    const url = process.env["SUPABASE_URL"];
-    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-    if (!url || !key) throw new Error("Cloud authentication is not configured.");
+    const { url, key } = resolveCloudConfig();
     const supabase = createRequestSupabase(url, key);
     const { error } = await supabase.auth.setSession({
       access_token: data.accessToken,
       refresh_token: data.refreshToken,
     });
+    if (error) console.error("Supabase Auth Error:", error.message);
     if (error) throw new Error("Unable to establish a secure sign-in session.");
     const identity = await resolveIdentity(supabase);
     if (!identity) throw new Error("Unable to verify the signed-in account.");
@@ -127,9 +140,7 @@ export const establishServerSession = createServerFn({ method: "POST" })
   });
 
 export const clearServerSession = createServerFn({ method: "POST" }).handler(async () => {
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
-  if (!url || !key) throw new Error("Cloud authentication is not configured.");
+  const { url, key } = resolveCloudConfig();
   const request = getRequest();
   const supabase = createRequestSupabase(url, key);
   await supabase.auth.signOut();
